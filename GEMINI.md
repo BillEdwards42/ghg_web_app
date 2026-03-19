@@ -1,0 +1,3 @@
+1. **No Blocking Terminal Commands**: This is a web application. Do not execute hosting commands (like starting development servers) or any other commands that will block or make the terminal hang while the user is testing the app.
+2. **Test-Driven Development (TDD)**: The development process is test-driven. Whenever the user requests a new function, feature, or code changes, analyze the request to determine if there are parts that should be covered by tests. If so, explicitly notify the user that a test should be created.
+3. **Do not modify parts other than the requested**: When a specific function or feature is requested, only modify the parts of the code that are related to the requested function or feature. Do not modify any other parts of the code.
