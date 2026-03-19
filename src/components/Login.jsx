@@ -23,10 +23,12 @@ function Login({ onLogin }) {
     }, 800);
   };
 
+  const logoUrl = `${import.meta.env.BASE_URL}assets/lndata_logo_en.png`;
+
   return (
     <div id="login-screen">
       <form className="login-card" onSubmit={handleSubmit} autoComplete="off">
-        <img className="logo" src="/assets/lndata_logo_en.png" alt="GHG Logo" />
+        <img className="logo" src={logoUrl} alt="GHG Logo" />
         <h1>GHG 數據採集</h1>
 
         <div className="input-group">

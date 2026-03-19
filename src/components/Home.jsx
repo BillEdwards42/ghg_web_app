@@ -23,11 +23,12 @@ function Home({ onOpenScan, onLogout }) {
   };
 
   const isActionEnabled = selectedCorp && selectedLoc;
+  const logoUrl = `${import.meta.env.BASE_URL}assets/lndata_logo_en.png`;
 
   return (
     <div id="home-screen" className="app-container" style={{ display: 'block' }}>
       <header className="app-header">
-        <img src="/assets/lndata_logo_en.png" alt="LN Data Logo" className="header-logo-img" />
+        <img src={logoUrl} alt="LN Data Logo" className="header-logo-img" />
         <div className="header-logo">{"Ln{Carbon}"}</div>
         <button onClick={onLogout} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#8E8EA0', fontWeight: '600' }}>登出</button>
       </header>
