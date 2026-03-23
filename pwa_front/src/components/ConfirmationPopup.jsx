@@ -145,15 +145,14 @@ function ConfirmationPopup({ data, file, category, onClose, onSave }) {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
-      // Since it succeeds quickly, no timeout needed
- 
-      
-      alert('資料已成功傳送！');
+      // Read the exact message string sent by the backend's res.json()
+      alert(response.data.message || '資料已成功傳送！');
       onSave();
     } catch (err) {
       console.error('Submission error:', err);
-      // Even if dummy API fails, we proceed as requested for the prototype flow
-      alert('資料已成功傳送！');
+      // Extract backend error or fallback
+      const errorMsg = err.response?.data?.error || '資料已成功傳送！';
+      alert(errorMsg);
       onSave();
     } finally {
       setIsSubmitting(false);

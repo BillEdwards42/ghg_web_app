@@ -2,9 +2,9 @@ import express from 'express';
 
 const router = express.Router();
 
-// 這是假認證端點 (rick_auth)
-// 功能：接收前端傳來的 account 和 password，只要兩個欄位都有值，就會回傳成功。
-// 容易修改：老闆可以將這裡的邏輯替換為真實的資料庫查詢或是 JWT 驗證。
+// 假認證api (rick_auth)
+// 功能：接收前端傳來的 account 和 password。目前只要兩個欄位都有值，就會回傳成功。
+// 後續你要換邏輯成資料庫查詢或是 JWT 驗證都可，加油。
 router.post('/rick_auth', (req, res) => {
   const { account, password } = req.body;
 

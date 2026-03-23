@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 
-// 引入我們模組化的路由 (Modular Routes)
+// 引入Routes
 import authRoutes from './routes/auth.js';
 import ocrRoutes from './routes/ocr.js';
 import storeRoutes from './routes/store.js';
@@ -18,8 +18,7 @@ app.use(cors());
 // 解析 application/json 以支援 req.body
 app.use(express.json());
 
-// 註冊所有模組化端點 (如果老闆想要加上前綴，可以直接在這裡加)
-// 比如 /api/rick_auth, /api/ocr, /api/rick_store
+// 註冊routes
 app.use('/api', authRoutes);
 app.use('/api', ocrRoutes);
 app.use('/api', storeRoutes);
