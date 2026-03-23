@@ -6,10 +6,9 @@ export default defineConfig({
   base: '/ghg_web_app/',
   server: {
     proxy: {
-      '/api/ocr': {
-        target: 'https://apisix.commeet.co',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/ocr/, '/ocr')
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true
       }
     }
   },

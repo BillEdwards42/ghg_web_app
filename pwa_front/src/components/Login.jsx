@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { apiClient } from '../utils/api';
 
 function Login({ onLogin }) {
   const [account, setAccount] = useState('');
@@ -6,7 +7,7 @@ function Login({ onLogin }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -16,11 +17,19 @@ function Login({ onLogin }) {
     }
 
     setLoading(true);
-    // Simulate API delay
-    setTimeout(() => {
+    
+    try {
+      // 呼叫我們的模組化後端認證端點 (rick_auth)
+      const response = await apiClient.post('/rick_auth', { account, password });
+      
+      if (response.data.success) {
+        setLoading(false);
+        onLogin();
+      }
+    } catch (err) {
       setLoading(false);
-      onLogin();
-    }, 800);
+      setError(err.response?.data?.error || '登入失敗，請稍後再試');
+    }
   };
 
   const logoUrl = `${import.meta.env.BASE_URL}assets/lndata_logo_en.png`;

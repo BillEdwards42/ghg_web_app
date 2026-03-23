@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useOCR } from '../hooks/useOCR';
+import { apiClient } from '../utils/api';
 
 const TAIWAN_RAILWAY_STATIONS = [
   '基隆', '三坑', '八堵', '七堵', '百福', '五堵', '汐止', '汐科', '南港', '松山', 
@@ -137,17 +138,15 @@ function ConfirmationPopup({ data, file, category, onClose, onSave }) {
       formData.append('data', JSON.stringify(entryData));
       formData.append('category', category);
 
-      // Dummy API call to rick_api
-      console.log('Sending data to rick_api...', { category, entryData, fileName: file?.name });
+      // Use the centralized Axios instance to send to our modular rick_store endpoint
+      console.log('Sending data to rick_store...', { category, entryData, fileName: file?.name });
       
-      const response = await fetch('/api/rick_api', {
-        method: 'POST',
-        body: formData
+      const response = await apiClient.post('/rick_store', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
 
-      // Since rick_api is a dummy, we might get a 404 or error.
-      // We'll simulate a success for the user's workflow.
-      await new Promise(resolve => setTimeout(resolve, 1000)); 
+      // Since it succeeds quickly, no timeout needed
+ 
       
       alert('資料已成功傳送！');
       onSave();

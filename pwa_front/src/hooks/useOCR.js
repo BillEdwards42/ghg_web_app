@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { apiClient } from '../utils/api';
 
 const UTILITY_SCHEMAS = {
   '電費單': {
@@ -89,52 +90,27 @@ export const useOCR = () => {
       const file = await compressImage(rawFile);
       const formData = new FormData();
       formData.append('file', file);
+      // 新增：把選擇的分類傳給後端，由後端統一進行邏輯與 Schema 驗證
+      formData.append('category', selectedCategory);
 
-      const isDev = import.meta.env.DEV;
-      let apiUrl = import.meta.env.VITE_OCR_URL || '';
-      if (isDev) {
-        apiUrl = '/api/ocr/dev/api/lndata/classify_detect';
-      } else {
-        apiUrl = apiUrl || 'https://apisix.commeet.co/ocr/dev/api/lndata/classify_detect';
-      }
-
-      const rawUser = import.meta.env.VITE_OCR_USERNAME || 'lndata';
-      const rawPass = import.meta.env.VITE_OCR_PASSWORD || 'cR2*#X6A^VXYtrRYCd4DDp*qr1ikScHO';
-      const authHeader = 'Basic ' + btoa(`${rawUser.replace(/^['"]|['"]$/g, '')}:${rawPass.replace(/^['"]|['"]$/g, '')}`);
-
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Authorization': authHeader },
-        body: formData
+      // We direct the request to the secure Node.js proxy utilizing our centralized Axios client
+      const response = await apiClient.post('/ocr', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`API Error [${response.status}]: ${errorText.substring(0, 100)}`);
-      }
-
-      const result = await response.json();
-      const data = Array.isArray(result) ? result[0] : (result.data ? result.data[0] : null);
-
-      if (!data) {
-        throw new Error('無法辨識，請確保拍攝物品正確。');
-      }
-
-      const schema = UTILITY_SCHEMAS[selectedCategory];
-      const isCorrectType = schema.types 
-        ? schema.types.includes(data.type) 
-        : data.type === schema.type;
-
-      if (!isCorrectType) {
-        throw new Error(`此票據並非${schema.errorLabel}。`);
-      }
-
+      // 後端現在已經幫我們驗證好資料，並且回傳乾淨的 { data, schema }
+      const result = response.data;
+      
       setLoading(false);
-      return { data, schema };
+      return result;
 
     } catch (err) {
       setLoading(false);
-      setError(err.message);
+      // Extract specific backend error message from Axios if available
+      const backendError = err.response?.data?.error;
+      setError(backendError || err.message);
       return null;
     }
   };

@@ -1,25 +1,13 @@
 {
-  "name": "ghg_web",
+  "name": "ghg_web_workspace",
   "private": true,
+  "workspaces": [
+    "pwa_front",
+    "nodejs_back"
+  ],
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
-  },
-  "devDependencies": {
-    "@happy-dom/global-registrator": "^20.8.4",
-    "@types/bun": "latest",
-    "@vitejs/plugin-react": "^4.3.4",
-    "happy-dom": "^20.8.4",
-    "vite": "^6.0.0",
-    "vite-plugin-pwa": "^0.21.1"
-  },
-  "peerDependencies": {
-    "typescript": "^5.9.3"
-  },
-  "dependencies": {
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
-    "react-router-dom": "^7.13.1"
+    "dev:front": "bun --cwd pwa_front dev",
+    "dev:back": "bun --cwd nodejs_back dev",
+    "dev": "bun run dev:back & bun run dev:front"
   }
 }
