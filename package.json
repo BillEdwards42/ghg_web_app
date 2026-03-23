@@ -6,6 +6,7 @@
     "nodejs_back"
   ],
   "scripts": {
+    "build": "cd pwa_front && bun run build",
     "dev:front": "bun --cwd pwa_front dev",
     "dev:back": "bun --cwd nodejs_back dev",
     "dev": "bun run dev:back & bun run dev:front"
