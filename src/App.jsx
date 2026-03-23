@@ -4,11 +4,24 @@ import Login from './components/Login';
 import Home from './components/Home';
 import ScanSelection from './components/ScanSelection';
 import ConfirmationPopup from './components/ConfirmationPopup';
+import InstallPrompt from './components/InstallPrompt';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('isLoggedIn') === 'true');
   const navigate = useNavigate();
   
+  const [forceSkipInstall, setForceSkipInstall] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(
+    window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone
+  );
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(display-mode: standalone)');
+    const handleChange = (e) => setIsStandalone(e.matches);
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+
   const [selectedCategory, setSelectedCategory] = useState(() => {
     return sessionStorage.getItem('nav_category') || null;
   });
@@ -43,6 +56,15 @@ function App() {
     setShowConfirmation(false);
     navigate('/');
   };
+
+  const skippedInstall = sessionStorage.getItem('skip_install') === 'true' || forceSkipInstall;
+
+  if (!isStandalone && !skippedInstall) {
+    return <InstallPrompt onSkip={() => {
+      sessionStorage.setItem('skip_install', 'true');
+      setForceSkipInstall(true);
+    }} />;
+  }
 
   if (!isLoggedIn) {
     return <Login onLogin={handleLogin} />;

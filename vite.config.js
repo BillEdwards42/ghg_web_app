@@ -23,11 +23,19 @@ export default defineConfig({
         short_name: 'GHG Data',
         description: 'Greenhouse Gas Data Collection Application',
         theme_color: '#4976CB',
+        display: 'standalone',
+        start_url: './',
         icons: [
           {
             src: 'assets/lndata_logo_en.png',
             sizes: '192x192',
             type: 'image/png'
+          },
+          {
+            src: 'assets/lndata_logo_en.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any maskable'
           }
         ]
       }

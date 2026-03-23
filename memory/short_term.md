@@ -21,9 +21,7 @@
    - **Result**: **Logo fixed locally**, but the remote deployment remains **blank**.
 
 ### Potential Root Causes:
-- **MIME Type Errors**: GitHub Pages might be serving the bundled `.js` files with the wrong MIME type if the path is slightly off.
-- **Vite Build Entry Point**: The `index.html` in the `main` branch might not be correctly transformed by the build process if the `<script src="...">` path is not exactly what Vite expects.
-- **Trailing Slash**: Navigating to `/ghg_web_app` (without the slash) vs `/ghg_web_app/` can cause relative paths to break.
+- **Incorrect Pages Source (Confirmed Root Cause)**: The live site URL was inspected, and it is actively serving the uncompiled `<script type="module" src="/src/main.jsx"></script>` from the root directory instead of the compiled `/dist` artifact. This explicitly proves that the GitHub repository settings are configured to deploy from the `main` branch root, entirely ignoring the `deploy.yml` GitHub Action. Browsers cannot parse `.jsx` natively, causing a silent crash rendering a completely blank screen.
 
 ---
 
