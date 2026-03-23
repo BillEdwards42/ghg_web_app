@@ -10,6 +10,6 @@
 - **Problem**: The UI did not display result metrics after the "辨識中..." (Recognizing...) OCR loader completed.
 - **Solution**: Updated `ConfirmationPopup.jsx` to hook specifically into the unique API schemas dynamically (Electricity: `regular_degree`, Water: `carbon_emission`, Transport: `from_name`, `to_name`, `date`).
 
-## 3. Storage & Privacy Constraints
-- **Problem**: Project constraints explicitly forbade permanent browser storage (like `localStorage`) to protect user privacy.
-- **Solution**: Replaced layout routing with `sessionStorage` (which strictly clears on tab close) and moved image buffer handling to pure RAM memory variables that deliberately self-destruct after submitting the API payload to `rick_api`.
+## 3. Install Prompt Race Condition
+- **Problem**: The PWA "下載" (Download) button defaulted to the fallback alert message (`請直接在瀏覽器選單...`) on GitHub Pages because the browser fired the `beforeinstallprompt` event *before* the React `<InstallPrompt>` component finished loading and mounting its listener.
+- **Solution**: Moved the `window.addEventListener` for `beforeinstallprompt` to the absolute top of `main.jsx` (before React boots) to catch and store the event in `window.deferredPrompt`, allowing the component to access it later without missing the trigger sequence.

@@ -7,7 +7,6 @@ import authRoutes from './routes/auth.js';
 import ocrRoutes from './routes/ocr.js';
 import storeRoutes from './routes/store.js';
 
-// 載入環境變數 (確保環境變數只在後端被讀取，保護金鑰不外洩給前端)
 dotenv.config();
 
 const app = express();

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 
 function InstallPrompt({ onSkip }) {
-  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  // Check if the global listener in main.jsx already safely caught the prompt
+  const [deferredPrompt, setDeferredPrompt] = useState(window.deferredPrompt || null);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e) => {
