@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import IosCoachMark from './IosCoachMark';
 
 function InstallPrompt({ onSkip }) {
   // Check if the global listener in main.jsx already safely caught the prompt
   const [deferredPrompt, setDeferredPrompt] = useState(window.deferredPrompt || null);
+  const [showCoachMark, setShowCoachMark] = useState(false);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e) => {
@@ -21,7 +23,16 @@ function InstallPrompt({ onSkip }) {
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) {
-      // Fallback for browsers (like iOS or desktop) where beforeinstallprompt doesn't fire
+      // Check if it's iOS
+      const ua = window.navigator.userAgent;
+      const isIos = /iPad|iPhone|iPod/.test(ua);
+      
+      if (isIos) {
+        setShowCoachMark(true);
+        return;
+      }
+
+      // Fallback for browsers (like desktop Safari) where beforeinstallprompt doesn't fire and it isn't a mobile iPhone
       alert('請直接在瀏覽器選單中選擇「加到主畫面」或「安裝」來進行下載。');
       return;
     }
@@ -67,6 +78,8 @@ function InstallPrompt({ onSkip }) {
           取消
         </button>
       </div>
+
+      {showCoachMark && <IosCoachMark onClose={() => setShowCoachMark(false)} />}
     </div>
   );
 }

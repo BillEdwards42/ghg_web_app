@@ -925,3 +925,120 @@ html, body {
 .hidden {
   display: none !important;
 }
+
+/* ========================================
+   iOS Coach Mark Overlay
+   ======================================== */
+.ios-coach-mark-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: fadeIn 0.3s ease;
+}
+
+.coach-mark-container {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none; /* Let clicks pass back to overlay */
+}
+
+.coach-mark-content {
+  position: absolute;
+  background: var(--color-surface);
+  color: var(--color-text);
+  padding: 24px;
+  border-radius: var(--radius-md);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+  text-align: center;
+  width: 85%;
+  max-width: 320px;
+  pointer-events: auto; /* Enable clicks internally */
+}
+
+.coach-mark-content p {
+  font-size: 1.05rem;
+  line-height: 1.6;
+  margin-bottom: 24px;
+  font-weight: 500;
+}
+
+.btn-coach-mark-close {
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 12px 24px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-family: var(--font-family);
+  cursor: pointer;
+  width: 100%;
+  transition: all var(--transition-fast);
+}
+
+.btn-coach-mark-close:active {
+  transform: scale(0.96);
+}
+
+.coach-mark-arrow {
+  position: absolute;
+  width: 60px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Safari Portrait iPhone */
+.safari-layout .coach-mark-content {
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.safari-layout .coach-mark-arrow {
+  bottom: 10px;
+  left: 50%;
+  margin-left: -30px;
+  animation: bounceDown 1.5s infinite;
+}
+
+/* Chrome Portrait iPhone */
+.chrome-layout .coach-mark-content {
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.chrome-layout .coach-mark-arrow {
+  top: 30px;
+  right: 15px;
+  animation: bounceUp 1.5s infinite;
+}
+
+.chrome-layout .coach-mark-arrow svg {
+  transform: rotate(180deg);
+}
+
+.generic-layout .coach-mark-content {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+@keyframes bounceDown {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(15px); }
+}
+
+@keyframes bounceUp {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-15px); }
+}

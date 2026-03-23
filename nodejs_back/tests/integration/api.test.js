@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
-import app from '../server.js';
+import app from '../../server.js';
 
 describe('BFF API Endpoints', () => {
   let server;
@@ -19,6 +19,7 @@ describe('BFF API Endpoints', () => {
     server.close();
   });
 
+  // 測auth，auth是假的，測試沒用
   describe('POST /api/rick_auth', () => {
     it('should return 200 success if both account and password exist', async () => {
       const res = await fetch(`${baseUrl}/api/rick_auth`, {
@@ -43,6 +44,7 @@ describe('BFF API Endpoints', () => {
     });
   });
 
+  // 測store，store是假的，測試沒用
   describe('POST /api/rick_store', () => {
     it('should return 200 fake store success', async () => {
       const res = await fetch(`${baseUrl}/api/rick_store`, {
@@ -56,11 +58,12 @@ describe('BFF API Endpoints', () => {
     });
   });
 
+  // 測ocr，這是真的，測試有用。
   describe('POST /api/ocr', () => {
     it('rejects POST /api/ocr gracefully if no file payload is attached', async () => {
       const res = await fetch(`${baseUrl}/api/ocr`, { method: 'POST' });
       expect(res.status).toBe(400);
-      
+
       const data = await res.json();
       expect(data.error).toBe('未提供圖片檔案 (No image file provided)');
     });
@@ -70,13 +73,13 @@ describe('BFF API Endpoints', () => {
       const blob = new Blob(["fake image data"], { type: "image/jpeg" });
       formData.append("file", blob, "test.jpg");
       // missing category
-      
-      const res = await fetch(`${baseUrl}/api/ocr`, { 
-        method: 'POST', 
-        body: formData 
+
+      const res = await fetch(`${baseUrl}/api/ocr`, {
+        method: 'POST',
+        body: formData
       });
       expect(res.status).toBe(400);
-      
+
       const data = await res.json();
       expect(data.error).toBe('缺少或無效的票據類型 (Invalid category)');
     });
