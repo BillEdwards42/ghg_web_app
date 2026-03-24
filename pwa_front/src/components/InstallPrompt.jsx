@@ -34,19 +34,19 @@ function InstallPrompt({ onSkip }) {
 
     // 依據您的要求，Android 或其他系統永遠只觸發系統原生的安裝彈出視窗，且絕不顯示任何警告或 fallback Alert
     const promptEvent = deferredPrompt || window.deferredPrompt;
-    
+
     if (promptEvent) {
       try {
         await promptEvent.prompt();
         const { outcome } = await promptEvent.userChoice;
-        
+
         if (outcome === 'accepted') {
           console.log('User accepted the native install prompt');
           onSkip(); // Proceed to login/app after successfully accepting install
         } else {
           console.log('User dismissed the native install prompt');
         }
-        
+
         // We've used the prompt, throw it away natively
         window.deferredPrompt = null;
         setDeferredPrompt(null);
@@ -65,18 +65,18 @@ function InstallPrompt({ onSkip }) {
   return (
     <div id="login-screen">
       <div className="login-card" style={{ textAlign: 'center', backgroundColor: '#FFFFFF' }}>
-        <img className="logo" src={logoUrl} alt="GHG Logo" style={{ marginBottom: '20px' }} />
+        <img className="logo" src={logoUrl} alt="Ln{Carbon} Logo" style={{ marginBottom: '20px' }} />
         <h2 style={{ marginBottom: '30px', color: '#1B1B1F', fontSize: '1.25rem' }}>請下載以獲得最佳體驗</h2>
-        
-        <button 
+
+        <button
           onClick={handleInstallClick}
           className="btn-primary"
           style={{ marginBottom: '15px' }}
         >
           下載
         </button>
-        
-        <button 
+
+        <button
           onClick={onSkip}
           className="btn-primary"
           style={{ background: '#F0F0F5', color: '#1B1B1F', border: 'none' }}
