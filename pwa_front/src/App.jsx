@@ -31,7 +31,7 @@ function App() {
   //This one listens for the native appinstalled event and if so, set forceSkipInstall to true.
   useEffect(() => {
     const handleAppInstalled = () => {
-      localStorage.setItem('pwa_prompt_dismissed', 'true');
+      sessionStorage.setItem('pwa_prompt_dismissed', 'true');
       setForceSkipInstall(true);
       console.log('PWA was installed natively');
     };
@@ -90,11 +90,11 @@ function App() {
     navigate('/');
   };
 
-  const skippedInstall = localStorage.getItem('pwa_prompt_dismissed') === 'true' || forceSkipInstall;
+  const skippedInstall = sessionStorage.getItem('pwa_prompt_dismissed') === 'true' || forceSkipInstall;
 
   if (!isStandalone && !skippedInstall) {
     return <InstallPrompt onSkip={() => {
-      localStorage.setItem('pwa_prompt_dismissed', 'true');
+      sessionStorage.setItem('pwa_prompt_dismissed', 'true');
       setForceSkipInstall(true);
     }} />;
   }
