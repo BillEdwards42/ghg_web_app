@@ -138,6 +138,14 @@ function ConfirmationPopup({ data, file, category, onClose, onSave }) {
       formData.append('data', JSON.stringify(entryData));
       formData.append('category', category);
 
+      // GitHub Pages POC Bypass
+      if (window.location.hostname.includes('github.io')) {
+        alert("⚠️ [POC Demo Mode] 資料已成功在前端模擬送出！");
+        setIsSubmitting(false);
+        onSave();
+        return;
+      }
+
       // Use the centralized Axios instance to send to our modular rick_store endpoint
       console.log('Sending data to rick_store...', { category, entryData, fileName: file?.name });
       

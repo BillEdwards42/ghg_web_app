@@ -18,6 +18,14 @@ function Login({ onLogin }) {
 
     setLoading(true);
     
+    // GitHub Pages POC Bypass (Static Host doesn't have our Node backend)
+    if (window.location.hostname.includes('github.io')) {
+      alert("⚠️ [POC Demo Mode] GitHub Pages 無法連線至本地 Node 後端。已啟用模擬登入！");
+      setLoading(false);
+      onLogin();
+      return;
+    }
+
     try {
       // 呼叫我們的模組化後端認證端點 (rick_auth)
       const response = await apiClient.post('/rick_auth', { account, password });
