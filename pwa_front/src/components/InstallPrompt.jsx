@@ -22,32 +22,41 @@ function InstallPrompt({ onSkip }) {
   }, []);
 
   const handleInstallClick = async () => {
-    // Actively check the global window object in case the React state missed the initialization slice
-    const promptEvent = deferredPrompt || window.deferredPrompt;
+    // 判斷是否為 iOS 裝置
+    const ua = window.navigator.userAgent;
+    const isIos = /iPad|iPhone|iPod/.test(ua);
 
-    if (!promptEvent) {
-      // Regardless of OS (iOS inherently, or Android Chrome blocking over HTTP), universally fallback to the elegant Coach Mark overlay
+    if (isIos) {
+      // 依據您的要求，iOS 永遠只顯示全螢幕變暗的 Coach Mark 動畫
       setShowCoachMark(true);
       return;
     }
+
+    // 依據您的要求，Android 或其他系統永遠只觸發系統原生的安裝彈出視窗，且絕不顯示任何警告或 fallback Alert
+    const promptEvent = deferredPrompt || window.deferredPrompt;
     
-    
-    // Show the install prompt safely using the actual event instance
-    promptEvent.prompt();
-    
-    // Wait for the user to respond to the prompt
-    const { outcome } = await promptEvent.userChoice;
-    
-    if (outcome === 'accepted') {
-      console.log('User accepted the install prompt');
-      onSkip(); // Proceed to login/app after accepting install
+    if (promptEvent) {
+      try {
+        await promptEvent.prompt();
+        const { outcome } = await promptEvent.userChoice;
+        
+        if (outcome === 'accepted') {
+          console.log('User accepted the native install prompt');
+          onSkip(); // Proceed to login/app after successfully accepting install
+        } else {
+          console.log('User dismissed the native install prompt');
+        }
+        
+        // We've used the prompt, throw it away natively
+        window.deferredPrompt = null;
+        setDeferredPrompt(null);
+      } catch (err) {
+        console.error('System prompt error:', err);
+      }
     } else {
-      console.log('User dismissed the install prompt');
+      // 如果瀏覽器安全策略或快取導致系統彈窗事件被隱藏 (例如安裝過了)，我們絕不跳出任何 Alert。
+      console.warn("System native install prompt was completely swallowed or blocked by Chrome.");
     }
-    
-    // We've used the prompt, and can't use it again, throw it away
-    window.deferredPrompt = null;
-    setDeferredPrompt(null);
   };
 
   const logoUrl = `${import.meta.env.BASE_URL}assets/lndata_logo_en.png`;
