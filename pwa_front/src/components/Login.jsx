@@ -46,7 +46,7 @@ function Login({ onLogin }) {
     <div id="login-screen">
       <form className="login-card" onSubmit={handleSubmit} autoComplete="off">
         <img className="logo" src={logoUrl} alt="Ln{Carbon} Logo" />
-        <h1>Ln{Carbon}</h1>
+        <h1>{"Ln{Carbon}"}</h1>
 
         <div className="input-group">
           <label htmlFor="input-account">帳號</label>
