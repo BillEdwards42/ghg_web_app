@@ -54,8 +54,9 @@ function InstallPrompt({ onSkip }) {
         console.error('System prompt error:', err);
       }
     } else {
-      // 如果瀏覽器安全策略或快取導致系統彈窗事件被隱藏 (例如安裝過了)，我們絕不跳出任何 Alert。
+      // 如果瀏覽器安全策略或快取導致系統彈窗事件被隱藏 (例如安裝過了)，提供一個 fallback 提示
       console.warn("System native install prompt was completely swallowed or blocked by Chrome.");
+      alert('無法啟動系統安裝程式。如果想安裝此 App，請點擊瀏覽器右上角的選單 (⋮)，然後選擇「加到主畫面」或「安裝應用程式」。');
     }
   };
 
