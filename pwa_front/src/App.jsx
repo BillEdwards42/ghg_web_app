@@ -22,6 +22,16 @@ function App() {
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
+  useEffect(() => {
+    const handleAppInstalled = () => {
+      localStorage.setItem('pwa_prompt_dismissed', 'true');
+      setForceSkipInstall(true);
+      console.log('PWA was installed natively');
+    };
+    window.addEventListener('appinstalled', handleAppInstalled);
+    return () => window.removeEventListener('appinstalled', handleAppInstalled);
+  }, []);
+
   const [selectedCategory, setSelectedCategory] = useState(() => {
     return sessionStorage.getItem('nav_category') || null;
   });
@@ -57,11 +67,11 @@ function App() {
     navigate('/');
   };
 
-  const skippedInstall = sessionStorage.getItem('skip_install') === 'true' || forceSkipInstall;
+  const skippedInstall = localStorage.getItem('pwa_prompt_dismissed') === 'true' || forceSkipInstall;
 
   if (!isStandalone && !skippedInstall) {
     return <InstallPrompt onSkip={() => {
-      sessionStorage.setItem('skip_install', 'true');
+      localStorage.setItem('pwa_prompt_dismissed', 'true');
       setForceSkipInstall(true);
     }} />;
   }
