@@ -26,17 +26,8 @@ function InstallPrompt({ onSkip }) {
     const promptEvent = deferredPrompt || window.deferredPrompt;
 
     if (!promptEvent) {
-      // Check if it's iOS
-      const ua = window.navigator.userAgent;
-      const isIos = /iPad|iPhone|iPod/.test(ua);
-      
-      if (isIos) {
-        setShowCoachMark(true);
-        return;
-      }
-
-      // Fallback for browsers (like desktop Safari) where beforeinstallprompt doesn't fire and it isn't a mobile iPhone
-      alert('請直接在瀏覽器選單中選擇「加到主畫面」或「安裝」來進行下載。');
+      // Regardless of OS (iOS inherently, or Android Chrome blocking over HTTP), universally fallback to the elegant Coach Mark overlay
+      setShowCoachMark(true);
       return;
     }
     

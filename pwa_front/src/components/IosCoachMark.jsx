@@ -1,20 +1,17 @@
 import React from 'react';
 
 function IosCoachMark({ onClose }) {
-  // Determine if it's iOS and the specific browser using regex on userAgent
+  // Determine OS and Browser
   const ua = window.navigator.userAgent;
   const isIos = /iPad|iPhone|iPod/.test(ua);
+  const isAndroid = /Android/i.test(ua);
   
-  // Note: Chrome on iOS contains 'CriOS'. Firefox contains 'FxiOS'.
-  const isChrome = isIos && /CriOS/i.test(ua);
-  const isFirefox = isIos && /FxiOS/i.test(ua);
-  
-  // Safari contains WebKit & Safari but NO CriOS/FxiOS
-  const isSafari = isIos && /WebKit/i.test(ua) && !isChrome && !isFirefox;
+  const isChrome = /CriOS|Chrome/.test(ua) && !/Edge|Edg/i.test(ua);
+  const isSafari = isIos && /WebKit/i.test(ua) && !isChrome;
 
   // Initial variables for rendering different layouts dynamically
   let layoutClass = 'generic-layout';
-  let instructionText = '請使用 Safari 開啟此網頁即可將 App 加到主畫面。';
+  let instructionText = isAndroid ? '請點擊瀏覽器選單，選擇「加到主畫面」以安裝 App。' : '請使用 Safari 開啟此網頁即可將 App 加到主畫面。';
   let showArrow = false;
   let ShareIcon = null;
 
@@ -32,13 +29,17 @@ function IosCoachMark({ onClose }) {
     layoutClass = 'chrome-layout';
     showArrow = true;
     ShareIcon = () => (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block', verticalAlign: 'middle', margin: '0 4px', color: '#4976CB' }}>
-        <circle cx="18" cy="5" r="3"/>
-        <circle cx="6" cy="12" r="3"/>
-        <circle cx="18" cy="19" r="3"/>
-        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
-        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-      </svg>
+      isIos ? (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block', verticalAlign: 'middle', margin: '0 4px', color: '#4976CB' }}>
+          <circle cx="18" cy="5" r="3"/>
+          <circle cx="6" cy="12" r="3"/>
+          <circle cx="18" cy="19" r="3"/>
+          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+          <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+        </svg>
+      ) : (
+        <strong style={{ margin: '0 4px', color: '#4976CB', fontSize: '1.2rem', verticalAlign: 'middle' }}>⋮</strong>
+      )
     );
   }
 
@@ -47,9 +48,14 @@ function IosCoachMark({ onClose }) {
       <div className={`coach-mark-container ${layoutClass}`} onClick={(e) => e.stopPropagation()}>
         <div className="coach-mark-content">
           <p>
-            {isSafari || isChrome ? (
+            {isSafari ? (
               <>
-                點擊{isSafari ? '下方' : '右上角'} <ShareIcon /> 分享按鈕<br/>
+                點擊下方 <ShareIcon /> 分享按鈕<br/>
+                選擇<strong>「加到主畫面」</strong>
+              </>
+            ) : isChrome ? (
+              <>
+                點擊右上角 {isIos ? '匯出' : '選單'} <ShareIcon /> 按鈕<br/>
                 選擇<strong>「加到主畫面」</strong>
               </>
             ) : (
