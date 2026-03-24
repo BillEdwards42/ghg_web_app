@@ -6,13 +6,15 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/auth.js';
 import ocrRoutes from './routes/ocr.js';
 import storeRoutes from './routes/store.js';
+import manualRoutes from './routes/manual.js';
 
 dotenv.config();
 
 const app = express();
+// 選port
 const port = process.env.PORT || 3000;
 
-// 啟用 CORS 允許前端應用程式 (例如 React 運行在 port 5173) 請求我們這個後端伺服器
+// 讓 app 可以跨域發送api。
 app.use(cors());
 
 // 解析 application/json 以支援 req.body
@@ -22,6 +24,7 @@ app.use(express.json());
 app.use('/api', authRoutes);
 app.use('/api', ocrRoutes);
 app.use('/api', storeRoutes);
+app.use('/api', manualRoutes);
 
 // 當使用 `node server.js` 直接執行時才會啟動伺服器
 // 這個寫法有助於使用測試套件 (如 Jest 或 Bun) 直接匯入 app 進行自動化邏輯測試

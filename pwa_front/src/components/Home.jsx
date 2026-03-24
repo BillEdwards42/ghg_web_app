@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import SelectionModal from './SelectionModal';
 import { corpAndLocData } from '../utils/mockData';
 
-function Home({ onOpenScan, onLogout }) {
+function Home({ onOpenScan, onOpenManual, onLogout }) {
   const [selectedCorp, setSelectedCorp] = useState(() => JSON.parse(localStorage.getItem('selected_corp') || 'null'));
   const [selectedLoc, setSelectedLoc] = useState(() => JSON.parse(localStorage.getItem('selected_loc') || 'null'));
   
@@ -86,7 +86,7 @@ function Home({ onOpenScan, onLogout }) {
                 </div>
               </div>
 
-              <button className="action-box secondary" id="btn-manual">
+              <button className="action-box secondary" id="btn-manual" onClick={onOpenManual}>
                 <div className="box-content stack">
                   <div className="box-icon-wrap">
                     <svg className="box-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
