@@ -22,7 +22,10 @@ function InstallPrompt({ onSkip }) {
   }, []);
 
   const handleInstallClick = async () => {
-    if (!deferredPrompt) {
+    // Actively check the global window object in case the React state missed the initialization slice
+    const promptEvent = deferredPrompt || window.deferredPrompt;
+
+    if (!promptEvent) {
       // Check if it's iOS
       const ua = window.navigator.userAgent;
       const isIos = /iPad|iPhone|iPod/.test(ua);
@@ -37,11 +40,12 @@ function InstallPrompt({ onSkip }) {
       return;
     }
     
-    // Show the install prompt
-    deferredPrompt.prompt();
+    
+    // Show the install prompt safely using the actual event instance
+    promptEvent.prompt();
     
     // Wait for the user to respond to the prompt
-    const { outcome } = await deferredPrompt.userChoice;
+    const { outcome } = await promptEvent.userChoice;
     
     if (outcome === 'accepted') {
       console.log('User accepted the install prompt');
@@ -51,6 +55,7 @@ function InstallPrompt({ onSkip }) {
     }
     
     // We've used the prompt, and can't use it again, throw it away
+    window.deferredPrompt = null;
     setDeferredPrompt(null);
   };
 
