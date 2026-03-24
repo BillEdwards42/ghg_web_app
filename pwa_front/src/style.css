@@ -25,13 +25,16 @@
 }
 
 /* --- Reset & Base --- */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   height: 100%;
   overflow: hidden;
   font-family: var(--font-family);
@@ -156,7 +159,7 @@ html, body {
 .app-container {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  min-height: 100dvh;
   background: var(--color-bg);
 }
 
@@ -205,7 +208,7 @@ html, body {
   border-radius: 16px;
   padding: 16px 20px;
   border: 1px solid var(--color-divider);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.03);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
   cursor: pointer;
   transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
   text-align: left;
@@ -214,7 +217,7 @@ html, body {
 
 .context-pill:active {
   transform: scale(0.96);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
 }
 
 .context-pill:hover {
@@ -390,7 +393,7 @@ html, body {
   background: var(--color-surface);
   border: 1px solid var(--color-divider);
   color: var(--color-text);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.04);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
 }
 
 .action-box.secondary:hover {
@@ -405,7 +408,10 @@ html, body {
 /* --- Full Screen Modals --- */
 .full-screen-modal {
   position: fixed;
-  top: 0; left: 0; width: 100vw; height: 100dvh;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100dvh;
   background: var(--color-surface-solid);
   z-index: 1000;
   display: flex;
@@ -503,7 +509,10 @@ html, body {
 /* --- Confirmation Popup --- */
 .popup-backdrop {
   position: fixed;
-  top: 0; left: 0; width: 100vw; height: 100dvh;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100dvh;
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
@@ -729,7 +738,7 @@ html, body {
   color: var(--color-text);
   font-size: 1rem;
   font-weight: 600;
-  border-bottom: 1px solid rgba(0,0,0,0.03);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.03);
 }
 
 .tree-node:last-child {
@@ -783,7 +792,8 @@ html, body {
 }
 
 .tree-children .tree-node {
-  padding-left: 48px; /* Indent child nodes */
+  padding-left: 48px;
+  /* Indent child nodes */
   font-size: 0.95rem;
   font-weight: 500;
 }
@@ -871,8 +881,13 @@ html, body {
 }
 
 @keyframes slideUp {
-  from { transform: translateY(100%); }
-  to   { transform: translateY(0); }
+  from {
+    transform: translateY(100%);
+  }
+
+  to {
+    transform: translateY(0);
+  }
 }
 
 /* --- Camera FAB --- */
@@ -913,6 +928,7 @@ html, body {
     opacity: 0;
     transform: translateY(16px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -920,8 +936,13 @@ html, body {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 /* --- Utility --- */
@@ -934,7 +955,10 @@ html, body {
    ======================================== */
 .ios-coach-mark-overlay {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background: rgba(0, 0, 0, 0.85);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
@@ -948,8 +972,12 @@ html, body {
 
 .coach-mark-container {
   position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  pointer-events: none; /* Let clicks pass back to overlay */
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  /* Let clicks pass back to overlay */
 }
 
 .coach-mark-content {
@@ -958,11 +986,12 @@ html, body {
   color: var(--color-text);
   padding: 24px;
   border-radius: var(--radius-md);
-  box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
   text-align: center;
   width: 85%;
   max-width: 320px;
-  pointer-events: auto; /* Enable clicks internally */
+  pointer-events: auto;
+  /* Enable clicks internally */
 }
 
 .coach-mark-content p {
@@ -1037,11 +1066,25 @@ html, body {
 }
 
 @keyframes bounceDown {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(15px); }
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(15px);
+  }
 }
 
 @keyframes bounceUp {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-15px); }
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-15px);
+  }
 }
