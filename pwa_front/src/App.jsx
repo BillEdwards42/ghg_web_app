@@ -50,7 +50,7 @@ function App() {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [ocrData, setOcrResult] = useState(null);
   const [ocrFile, setOcrFile] = useState(null);
-  
+
   // Manual Entry State
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [manualEquipment, setManualEquipment] = useState(null);
