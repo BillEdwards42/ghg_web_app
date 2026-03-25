@@ -18,8 +18,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['assets/lndata_logo_en.png'],
       manifest: {
-        name: 'GHG Data App',
-        short_name: 'GHG Data',
+        name: 'Ln{Carbon}',
+        short_name: 'Ln{Carbon}',
         description: 'Greenhouse Gas Data Collection Application',
         theme_color: '#4976CB',
         display: 'standalone',

@@ -1,10 +1,5 @@
 # Short Term Active Objectives
 
-## 1. API Security & Fullstack Backend Migration
-- **Problem**: The current React frontend calls external APIs directly, exposing sensitive `.env` secret keys directly to the public web browser bundle.
-- **Goal Requirement**: Adopt the secure Backend-for-Frontend (BFF) proxy pattern. Create a dedicated `nodejs_back` server internally. Per strict manager instruction, this server must specifically utilize **Express.js** as the core web framework and **Axios** for all downstream HTTP API fetching. The React UI will securely POST images to this local server, which will proxy the request dynamically using hidden `.env` credentials, and pipe the response natively back to the client.
-- **Current Progress**:
-  - ✅ **Scaffolded Workspace**: Initialized `nodejs_back` securely within the project root repository as a standard Monorepo architecture.
-  - ✅ **Express & Axios Integrations**: Built `server.js` matching strict framework requirements, properly forwarding the `POST /api/ocr` downstream query.
-  - ✅ **Secret Migration**: Stripped `.env` keys completely from the public React client and locked them safely inside the backend folder context.
-  - ✅ **TDD Verification**: Engineered a headless HTTP test in `api.test.js` that successfully proves the Axios downstream error-cascade handles empty payloads flawlessly without crashing.
+## 1. Enhance UI State Persistence for Manual Entry
+- **Problem**: In `ManualCategorySelection.jsx`, the user's progress through the 3-layer category tree (Root -> Subcategory -> Equipment) is only held in React state. If a user accidentally refreshes the browser page mid-flow, their entire progress is lost and they are kicked back to the root category. This contrasts with the OCR flow (`nav_category`), which securely backs up its intermediate state to `sessionStorage`.
+- **Goal Requirement**: Implement `sessionStorage` tracking for the `path` variable within `ManualCategorySelection.jsx`. On component mount, it should attempt to re-hydrate the drill-down path from `sessionStorage`. On successful completion or when moving back to the Home screen, the cached session data must be explicitly cleared to prevent stale state issues.
