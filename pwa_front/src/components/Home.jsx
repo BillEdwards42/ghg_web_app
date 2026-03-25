@@ -1,14 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import SelectionModal from './SelectionModal';
-import { corpAndLocData } from '../utils/mockData';
+import { apiClient } from '../utils/api';
 
 function Home({ onOpenScan, onOpenManual, onLogout }) {
+  // 1. Initial State from LocalStorage
+  const [entities] = useState(() => JSON.parse(localStorage.getItem('rootLegalEntities') || '[]'));
   const [selectedCorp, setSelectedCorp] = useState(() => JSON.parse(localStorage.getItem('selected_corp') || 'null'));
   const [selectedLoc, setSelectedLoc] = useState(() => JSON.parse(localStorage.getItem('selected_loc') || 'null'));
   
+  // 2. Dynamic Data State
+  const [facilities, setFacilities] = useState(() => {
+    // Try to load cached facilities for the currently selected corp
+    const cached = localStorage.getItem(`facilities_${selectedCorp?.id}`);
+    return cached ? JSON.parse(cached) : [];
+  });
+  const [loadingFacilities, setLoadingFacilities] = useState(false);
+
   const [isCorpModalOpen, setIsCorpModalOpen] = useState(false);
   const [isLocModalOpen, setIsLocModalOpen] = useState(false);
 
+  // 3. Persistence Effects
   useEffect(() => {
     localStorage.setItem('selected_corp', JSON.stringify(selectedCorp));
   }, [selectedCorp]);
@@ -17,9 +28,30 @@ function Home({ onOpenScan, onOpenManual, onLogout }) {
     localStorage.setItem('selected_loc', JSON.stringify(selectedLoc));
   }, [selectedLoc]);
 
+  // 4. Facility Fetching Logic
+  const fetchFacilities = async (entityId) => {
+    setLoadingFacilities(true);
+    try {
+      // Endpoint from auth.md: /facilitys/all/<id>?mode=direct&maxResults=999
+      const response = await apiClient.get(`/facilitys/all/${entityId}`, {
+        params: { mode: 'direct', maxResults: 999 }
+      });
+      const data = response.data || [];
+      setFacilities(data);
+      localStorage.setItem(`facilities_${entityId}`, JSON.stringify(data));
+    } catch (err) {
+      console.error('Failed to fetch facilities:', err);
+      setFacilities([]);
+    } finally {
+      setLoadingFacilities(false);
+    }
+  };
+
   const handleCorpSelect = (corp) => {
     setSelectedCorp(corp);
     setSelectedLoc(null); // Reset location when corp changes
+    setFacilities([]); // Clear old list
+    fetchFacilities(corp.id); // Fetch new list for this entity
   };
 
   const isActionEnabled = selectedCorp && selectedLoc;
@@ -43,13 +75,17 @@ function Home({ onOpenScan, onOpenManual, onLogout }) {
             </svg>
           </div>
         </button>
-        <button className="context-pill" onClick={() => setIsLocModalOpen(true)}>
+        <button className="context-pill" onClick={() => setIsLocModalOpen(true)} disabled={!selectedCorp || loadingFacilities}>
           <span className="pill-label">據點</span>
           <div className="pill-value-group">
-            <span className="pill-value">{selectedLoc?.name || '請選擇'}</span>
-            <svg className="pill-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polyline points="6 9 12 15 18 9"></polyline>
-            </svg>
+            <span className="pill-value">
+              {loadingFacilities ? '載入中...' : (selectedLoc?.name || '請選擇')}
+            </span>
+            {!loadingFacilities && (
+              <svg className="pill-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            )}
           </div>
         </button>
       </div>
@@ -107,7 +143,7 @@ function Home({ onOpenScan, onOpenManual, onLogout }) {
 
       <SelectionModal 
         title="選擇法人"
-        items={corpAndLocData}
+        items={entities}
         isOpen={isCorpModalOpen}
         onClose={() => setIsCorpModalOpen(false)}
         onSelect={handleCorpSelect}
@@ -117,7 +153,7 @@ function Home({ onOpenScan, onOpenManual, onLogout }) {
 
       <SelectionModal 
         title="選擇據點"
-        items={selectedCorp?.children || []}
+        items={facilities}
         isOpen={isLocModalOpen}
         onClose={() => setIsLocModalOpen(false)}
         onSelect={setSelectedLoc}

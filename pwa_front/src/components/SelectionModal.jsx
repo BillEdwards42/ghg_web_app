@@ -43,8 +43,8 @@ function SelectionModal({ title, items, isOpen, onClose, onSelect, selectedItem,
       <div className="modal-body">
         {items.map((item, idx) => (
           <div 
-            key={idx} 
-            className={`tree-node ${selectedItem?.name === item.name ? 'active' : ''}`}
+            key={item.id || idx} 
+            className={`tree-node ${selectedItem?.id === item.id ? 'active' : ''}`}
             onClick={() => {
               onSelect(item);
               onClose();

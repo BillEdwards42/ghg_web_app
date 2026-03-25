@@ -7,11 +7,25 @@ import ConfirmationPopup from './components/ConfirmationPopup';
 import InstallPrompt from './components/InstallPrompt';
 import ManualCategorySelection from './components/ManualCategorySelection';
 import ManualEntryPopup from './components/ManualEntryPopup';
+import { setAuthHeaders, apiClient } from './utils/api';
 
 function App() {
-  //Reaches into localStorage to see if the user is logged in.
-  const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('isLoggedIn') === 'true');
+  // Use token instead of boolean to determine login state
+  const [authToken, setAuthToken] = useState(() => {
+    const savedToken = localStorage.getItem('authToken');
+    if (savedToken) {
+      setAuthHeaders(savedToken); // Sync axios headers on startup
+    }
+    return savedToken;
+  });
+
+  const isLoggedIn = !!authToken;
   const navigate = useNavigate();
+
+  // Initialize Auth Headers when token changes (though handled in Login/Startup, this is safer)
+  useEffect(() => {
+    setAuthHeaders(authToken);
+  }, [authToken]);
 
   //Immediately interigates the browser: "Is this running full screen from home screen?"
   const [forceSkipInstall, setForceSkipInstall] = useState(false);
@@ -64,15 +78,28 @@ function App() {
   }, [selectedCategory]);
   //Watch this specific variable, every time the user clicks a category, instantly run this code. Empty [] means it only runs on startup.
 
-  const handleLogin = () => {
-    localStorage.setItem('isLoggedIn', 'true');
-    setIsLoggedIn(true);
+  const handleLogin = (token, rootEntities) => {
+    localStorage.setItem('authToken', token);
+    localStorage.setItem('rootLegalEntities', JSON.stringify(rootEntities));
+    setAuthToken(token);
+    // Note: We don't navigate, the conditional rendering below handles the switch to Home
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('isLoggedIn');
-    sessionStorage.clear();
-    setIsLoggedIn(false);
+  const handleLogout = async () => {
+    try {
+      // Optional: Inform backend about logout
+      await apiClient.delete('/session');
+    } catch (err) {
+      console.warn('Backend logout failed', err);
+    } finally {
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('rootLegalEntities');
+      localStorage.removeItem('selected_corp');
+      localStorage.removeItem('selected_loc');
+      sessionStorage.clear();
+      setAuthHeaders(null);
+      setAuthToken(null);
+    }
   };
 
   const clearOcrState = () => {

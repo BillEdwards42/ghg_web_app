@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { apiClient } from '../utils/api';
+import { apiClient, encodePassword, SYSTEM_ID, setAuthHeaders } from '../utils/api';
 
 function Login({ onLogin }) {
   const [account, setAccount] = useState('');
@@ -18,25 +18,39 @@ function Login({ onLogin }) {
 
     setLoading(true);
 
-    // GitHub Pages POC Bypass (Static Host doesn't have our Node backend)
-    if (window.location.hostname.includes('github.io')) {
-      alert("⚠️ [POC Demo Mode] GitHub Pages 無法連線至本地 Node 後端。已啟用模擬登入！");
-      setLoading(false);
-      onLogin();
-      return;
-    }
-
     try {
-      // 呼叫我們的模組化後端認證端點 (rick_auth)
-      const response = await apiClient.post('/rick_auth', { account, password });
+      // Step 1: Authentication
+      const loginResponse = await apiClient.post('/session', { 
+        username: account, 
+        password: encodePassword(password),
+        systemId: SYSTEM_ID
+      });
 
-      if (response.data.success) {
-        setLoading(false);
-        onLogin();
+      const token = loginResponse.data.token;
+      if (!token) {
+        throw new Error('未取得授權令牌');
       }
+
+      // Important: Set the token in headers immediately before the next call
+      setAuthHeaders(token);
+
+      // Step 2: Fetch User Context (checkUserToken)
+      // This validates the token and returns rootLegalEntities
+      const contextResponse = await apiClient.get('/checkUserToken');
+      const rootEntities = contextResponse.data.rootLegalEntities || [];
+
+      setLoading(false);
+      // Pass the token and entities to the parent App component
+      onLogin(token, rootEntities);
+
     } catch (err) {
       setLoading(false);
-      setError(err.response?.data?.error || '登入失敗，請稍後再試');
+      // Ensure headers are cleared if login fails
+      setAuthHeaders(null);
+      
+      const errMsg = err.response?.data?.error || err.message || '登入失敗，請稍後再試';
+      setError(errMsg);
+      console.error('Login error:', err);
     }
   };
 
