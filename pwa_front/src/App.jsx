@@ -10,11 +10,11 @@ import ManualEntryPopup from './components/ManualEntryPopup';
 import { setAuthHeaders, apiClient } from './utils/api';
 
 function App() {
-  // Use token instead of boolean to determine login state
+  // Initial value?
   const [authToken, setAuthToken] = useState(() => {
     const savedToken = localStorage.getItem('authToken');
     if (savedToken) {
-      setAuthHeaders(savedToken); // Sync axios headers on startup
+      setAuthHeaders(savedToken); // Is this needed? Need to test.
     }
     return savedToken;
   });
@@ -31,12 +31,13 @@ function App() {
   const [forceSkipInstall, setForceSkipInstall] = useState(false);
   const [isStandalone, setIsStandalone] = useState(
     window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone
-  );
+  );//Left is for android right is for ios.
 
   //useEffect is a React tool that says "Run this code in bg one time when the app boots up". Use it to constantly listen for native appinstalled event.
   //This one checks on whether the user switched to app from web and if so, set setIsStandalone to true.
   useEffect(() => {
     const mediaQuery = window.matchMedia('(display-mode: standalone)');
+    //Think of media query as a question, "Is the app running in standalone mode?". The answer is true or false. When the answer changes, e.matches, which is the value of the new answer, will be passed in setIsStandalone.
     const handleChange = (e) => setIsStandalone(e.matches);
     mediaQuery.addEventListener('change', handleChange);
     return () => mediaQuery.removeEventListener('change', handleChange);
@@ -44,31 +45,36 @@ function App() {
 
   //This one listens for the native appinstalled event and if so, set forceSkipInstall to true.
   useEffect(() => {
+    //A function defined to set skip install prompt parametors to true
     const handleAppInstalled = () => {
       sessionStorage.setItem('pwa_prompt_dismissed', 'true');
       setForceSkipInstall(true);
       console.log('PWA was installed natively');
     };
+    //Makes the window listen for an app install event, and if that happens, run the above defined function then.
     window.addEventListener('appinstalled', handleAppInstalled);
+    //Dismounts when app closed
     return () => window.removeEventListener('appinstalled', handleAppInstalled);
   }, []);
 
+  //For remembering where the user is when navigating between categories. 
   const [selectedCategory, setSelectedCategory] = useState(() => {
     return sessionStorage.getItem('nav_category') || null;
   });
 
-  // The following are initializations of holders, in this order:
-  // 1. The trigger of data popup window
-  // 2. OCR json
-  // 3. OCR image
+  // When OCR is done, this is set to true, so the confirmation popup appears.
   const [showConfirmation, setShowConfirmation] = useState(false);
+  // Holds the data that the backend spits back after OCR.
   const [ocrData, setOcrResult] = useState(null);
+  // Stores the actual photo taken by the user.
   const [ocrFile, setOcrFile] = useState(null);
 
-  // Manual Entry State
+  // Similar to showConfirmation, but for manual entry.
   const [showManualEntry, setShowManualEntry] = useState(false);
+  // Since each emission source(variable name will be equipment related across the code base) chosen will need different data, this state tells the popup which fields to display.
   const [manualEquipment, setManualEquipment] = useState(null);
 
+  // Saves the current choosen category to session storage, so that it survives a page refresh. This is for OCR cats only.
   useEffect(() => {
     if (selectedCategory) {
       sessionStorage.setItem('nav_category', selectedCategory);
@@ -76,15 +82,15 @@ function App() {
       sessionStorage.removeItem('nav_category');
     }
   }, [selectedCategory]);
-  //Watch this specific variable, every time the user clicks a category, instantly run this code. Empty [] means it only runs on startup.
 
+  // This is called by login.jsx after successful verifies user credentials with POST /session.
   const handleLogin = (token, rootEntities) => {
     localStorage.setItem('authToken', token);
     localStorage.setItem('rootLegalEntities', JSON.stringify(rootEntities));
     setAuthToken(token);
-    // Note: We don't navigate, the conditional rendering below handles the switch to Home
   };
 
+  //
   const handleLogout = async () => {
     try {
       // Optional: Inform backend about logout
@@ -117,6 +123,7 @@ function App() {
     navigate('/');
   };
 
+  // Used both because that session storage survives a refresh, and a state is used so that react knows when to re-render.
   const skippedInstall = sessionStorage.getItem('pwa_prompt_dismissed') === 'true' || forceSkipInstall;
 
   if (!isStandalone && !skippedInstall) {
