@@ -19,6 +19,17 @@ function App() {
     return savedToken;
   });
 
+  // Global context for reporting year, shared between Manual and OCR
+  const [reportingYear, setReportingYear] = useState(() => sessionStorage.getItem('reporting_year') || null);
+
+  useEffect(() => {
+    if (reportingYear) {
+      sessionStorage.setItem('reporting_year', reportingYear);
+    } else {
+      sessionStorage.removeItem('reporting_year');
+    }
+  }, [reportingYear]);
+
   const isLoggedIn = !!authToken;
   const navigate = useNavigate();
 
@@ -73,6 +84,7 @@ function App() {
   const [showManualEntry, setShowManualEntry] = useState(false);
   // Since each emission source(variable name will be equipment related across the code base) chosen will need different data, this state tells the popup which fields to display.
   const [manualEquipment, setManualEquipment] = useState(null);
+  const [manualYear, setManualYear] = useState(null);
 
   // Saves the current choosen category to session storage, so that it survives a page refresh. This is for OCR cats only.
   useEffect(() => {
@@ -105,6 +117,7 @@ function App() {
       sessionStorage.clear();
       setAuthHeaders(null);
       setAuthToken(null);
+      setReportingYear(null);
     }
   };
 
@@ -150,6 +163,8 @@ function App() {
 
         <Route path="/scan" element={
           <ScanSelection
+            activeYear={reportingYear}
+            setYear={setReportingYear}
             initialCategory={selectedCategory}
             onBack={() => {
               setSelectedCategory(null);
@@ -167,10 +182,13 @@ function App() {
 
         <Route path="/manual" element={
           <ManualCategorySelection
+            activeYear={reportingYear}
+            setYear={setReportingYear}
             onBack={() => navigate('/')}
-            onComplete={(pathData) => {
+            onComplete={(pathData, year) => {
               const equipment = pathData[2]; // object with id and name
               setManualEquipment(equipment);
+              setManualYear(year);
               setShowManualEntry(true);
             }}
           />
@@ -182,6 +200,7 @@ function App() {
           data={ocrData}
           file={ocrFile}
           category={selectedCategory}
+          activeYear={reportingYear}
           onClose={clearOcrState}
           onSave={() => {
             clearOcrState();
@@ -192,6 +211,7 @@ function App() {
       {showManualEntry && (
         <ManualEntryPopup
           equipment={manualEquipment}
+          year={manualYear}
           onClose={clearManualState}
           onSave={(data) => {
             console.log("Saving manual data:", data);

@@ -33,7 +33,7 @@ const HIGH_SPEED_RAIL_STATIONS = [
   '南港', '臺北', '板橋', '桃園', '新竹', '苗栗', '台中', '彰化', '雲林', '嘉義', '台南', '左營'
 ];
 
-function ConfirmationPopup({ data, file, category, onClose, onSave }) {
+function ConfirmationPopup({ data, file, category, onClose, onSave, activeYear }) {
   const { UTILITY_SCHEMAS } = useOCR();
   const schema = UTILITY_SCHEMAS[category];
   
@@ -41,6 +41,7 @@ function ConfirmationPopup({ data, file, category, onClose, onSave }) {
 
   // Common
   const [paymentDate, setPaymentDate] = useState('');
+  const [dateError, setDateError] = useState('');
   
   // Electricity specific
   const [usage, setUsage] = useState('');
@@ -83,9 +84,22 @@ function ConfirmationPopup({ data, file, category, onClose, onSave }) {
     }
   }, [data, schema, category]);
 
+  // Date Validation Effect
+  useEffect(() => {
+    if (paymentDate && activeYear) {
+      const selectedDateYear = paymentDate.split('-')[0];
+      if (selectedDateYear !== activeYear.toString()) {
+        setDateError(`非${activeYear}之日期`);
+      } else {
+        setDateError('');
+      }
+    }
+  }, [paymentDate, activeYear]);
+
   if (!data || !schema) return null;
 
   const handleConfirm = async () => {
+    if (dateError) return;
     setUsageError('');
     setPassengerError('');
     setCo2Error('');
@@ -200,6 +214,7 @@ function ConfirmationPopup({ data, file, category, onClose, onSave }) {
               <div className="form-group">
                 <label>日期</label>
                 <input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
+                {dateError && <div className="field-error">{dateError}</div>}
               </div>
               <div className="form-group">
                 <label>起點</label>
@@ -240,6 +255,7 @@ function ConfirmationPopup({ data, file, category, onClose, onSave }) {
               <div className="form-group">
                 <label>日期</label>
                 <input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
+                {dateError && <div className="field-error">{dateError}</div>}
               </div>
               <div className="form-group">
                 <label>CO2</label>
@@ -257,6 +273,7 @@ function ConfirmationPopup({ data, file, category, onClose, onSave }) {
               <div className="form-group">
                 <label>單據/登錄日期</label>
                 <input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
+                {dateError && <div className="field-error">{dateError}</div>}
               </div>
               <div className="form-group">
                 <label>耗用量</label>
@@ -271,7 +288,7 @@ function ConfirmationPopup({ data, file, category, onClose, onSave }) {
         </div>
         <div className="popup-actions">
           <button className="btn-secondary" onClick={onClose} disabled={isSubmitting}>取消</button>
-          <button className="btn-primary" onClick={handleConfirm} disabled={isSubmitting}>
+          <button className="btn-primary" onClick={handleConfirm} disabled={isSubmitting || !!dateError}>
             {isSubmitting ? '傳送中...' : '確認儲存'}
           </button>
         </div>

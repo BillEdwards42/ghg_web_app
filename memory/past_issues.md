@@ -16,4 +16,18 @@
 
 ## 4. API Requests Failing on GitHub Pages (Static Hosting)
 - **Problem**: The login endpoint automatically failed and returned "登入失敗，請稍後再試" when the frontend was deployed to GitHub Pages, despite working locally.
-- **Solution**: Diagnosed that GitHub Pages is strictly a static file host (HTML/CSS/JS) and cannot run the Node.js Express backend. The Axios relative URL (`/api/rick_auth`) encountered a fatal `404 Not Found` against the GitHub server. The backend must be explicitly hosted on a PaaS provider (like Render, Heroku, or AWS) and the `API_BASE_URL` switched to that absolute cloud URL for production deployment.
+- Diagnosed that GitHub Pages is strictly a static file host (HTML/CSS/JS) and cannot run the Node.js Express backend. The Axios relative URL (`/api/rick_auth`) encountered a fatal `404 Not Found` against the GitHub server. The backend must be explicitly hosted on a PaaS provider (like Render, Heroku, or AWS) and the `API_BASE_URL` switched to that absolute cloud URL for production deployment.
+
+## 5. Persistent "Blank Screen" & Syntax Errors (Unified Year Flow)
+- **Problem**: Following the implementation of the "Unified Year" flow, the application rendered a completely blank screen locally. The browser console showed 404 errors for main modules and a fatal `SyntaxError` regarding missing exports.
+- **Root Cause Analysis (Corrected)**:
+  - **Incorrect Investigation**: A previous engineer incorrectly identified `...` placeholders in `ConfirmationPopup.jsx` and missing `useEffect` imports as the primary causes. While these were minor issues, fixing them did not restore the app.
+  - **Actual Cause 1 (Resource Path Mismatch)**: In `index.html`, the entry point and assets were using absolute paths (e.g., `/src/main.jsx`). Because `vite.config.js` used `base: '/ghg_web_app/'`, the browser looked at the domain root instead of the subfolder, causing a total loading failure.
+  - **Actual Cause 2 (Missing Default Export)**: `ManualCategorySelection.jsx` was missing the `export default` statement at the end of the file, causing `App.jsx` to fail during the import phase with `Uncaught SyntaxError: The requested module ... does not provide an export named 'default'`.
+  - **Actual Cause 3 (ReferenceError)**: `useOCR.js` contained a reference to `setMatchResult` which was not defined in the hook's state, causing a crash in POC/bypass modes.
+- **Solution**:
+  - Updated `index.html` to use relative paths for all resources.
+  - Added `export default ManualCategorySelection;` to the component file.
+  - Properly initialized `matchResult` state in the `useOCR` hook.
+  - Updated `index.html` with the modern `<meta name="mobile-web-app-capable" content="yes">` tag to resolve deprecation warnings.
+- **Outcome**: The application now loads successfully locally and in subfolder environments with the Unified Year logic fully functional.

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useEquipmentForm } from '../hooks/useEquipmentForm';
 
-function ManualEntryPopup({ equipment, onClose, onSave }) {
+function ManualEntryPopup({ equipment, year, onClose, onSave }) {
   const { loading, error, fetchSchema } = useEquipmentForm();
   const [schema, setSchema] = useState([]);
   const [formData, setFormData] = useState({});
@@ -26,13 +26,18 @@ function ManualEntryPopup({ equipment, onClose, onSave }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave(formData);
+    onSave({ ...formData, year });
   };
 
   return (
     <div className="popup-backdrop">
       <div className="popup-card">
-        <h3>新增 {equipment?.name || '手動紀錄'}</h3>
+        <div style={{ marginBottom: '16px' }}>
+          <h3 style={{ marginBottom: '4px' }}>新增 {equipment?.name || '手動紀錄'}</h3>
+          <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', fontWeight: '600' }}>
+            報告年度：<span style={{ fontFamily: 'monospace', color: 'var(--color-primary)' }}>{year}</span>
+          </p>
+        </div>
         
         {loading ? (
           <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--color-primary)' }}>
@@ -52,12 +57,15 @@ function ManualEntryPopup({ equipment, onClose, onSave }) {
                   {field.label} {field.required && <span style={{ color: 'var(--color-error)' }}>*</span>}
                 </label>
                 <div className="input-with-unit">
-                  <input
-                    type={field.type}
-                    value={formData[field.id] || ''}
+                  <input 
+                    type={field.type} 
+                    value={formData[field.id] || ''} 
                     onChange={(e) => handleChange(field.id, e.target.value)}
                     required={field.required}
+                    min={field.type === 'date' ? `${year}-01-01` : undefined}
+                    max={field.type === 'date' ? `${year}-12-31` : undefined}
                   />
+
                   {field.unit && <span className="input-unit">{field.unit}</span>}
                 </div>
               </div>

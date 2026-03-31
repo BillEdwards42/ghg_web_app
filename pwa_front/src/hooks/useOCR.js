@@ -36,6 +36,7 @@ const UTILITY_SCHEMAS = {
 export const useOCR = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [matchResult, setMatchResult] = useState(null);
 
   const compressImage = async (file) => {
     return new Promise((resolve) => {
@@ -99,10 +100,8 @@ export const useOCR = () => {
                         : selectedCategory === '水費單' ? { type: 'tw_water_bill', carbon_emission: 12.5 } 
                         : { type: 'tw_thsrc', date: '2024-03-24', from_name: '台北' };
         
-        setTimeout(() => {
-          setMatchResult({ data: dummyData, schema });
-          setLoading(false);
-        }, 1200);
+        setMatchResult({ data: dummyData, schema });
+        setLoading(false);
         return;
       }
 
@@ -134,5 +133,5 @@ export const useOCR = () => {
     }
   };
 
-  return { loading, error, processImage, UTILITY_SCHEMAS };
+  return { loading, error, processImage, UTILITY_SCHEMAS, matchResult };
 };

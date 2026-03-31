@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-export const API_BASE_URL = 'https://dev-carbon64.lndata.com/frontend_api';
+export const API_BASE_URL = 'https://carbon64.lndata.com/frontend_api';
 export const SYSTEM_ID = 1;
 
 // Helper to encode password to Base64 as required by the backend

@@ -22,9 +22,6 @@ export function useEquipmentForm() {
     } catch (err) {
       console.warn('API failed (likely on GitHub Pages). Falling back to local mock schema.', err.message);
 
-      // Simulated wait for Github Pages POC
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
       return FALLBACK_SCHEMA;
     } finally {
       setLoading(false);
