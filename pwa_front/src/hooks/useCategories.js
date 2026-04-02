@@ -12,7 +12,14 @@ export function useCategories() {
     setError(null);
     try {
       // Production API endpoint for 3-tier manual data
-      const response = await apiClient.get(`/getEquipmentTypesForEmissionSourceData/2/${year}`, {
+      const locData = JSON.parse(localStorage.getItem('selected_loc') || '{}');
+      const facilityId = locData.id;
+      
+      if (!facilityId) {
+        return []; // If no facility is selected, return an empty array of categories
+      }
+
+      const response = await apiClient.get(`/getEquipmentTypesForEmissionSourceData/${facilityId}/${year}`, {
         params: { maxResults: 999 }
       });
       return response.data;

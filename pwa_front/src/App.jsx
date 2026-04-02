@@ -82,8 +82,8 @@ function App() {
 
   // Similar to showConfirmation, but for manual entry.
   const [showManualEntry, setShowManualEntry] = useState(false);
-  // Since each emission source(variable name will be equipment related across the code base) chosen will need different data, this state tells the popup which fields to display.
-  const [manualEquipment, setManualEquipment] = useState(null);
+  // Stores the full path data [Tier1, Tier2, Tier3] from manual selection
+  const [manualPath, setManualPath] = useState(null);
   const [manualYear, setManualYear] = useState(null);
 
   // Saves the current choosen category to session storage, so that it survives a page refresh. This is for OCR cats only.
@@ -131,7 +131,7 @@ function App() {
 
   const clearManualState = () => {
     setShowManualEntry(false);
-    setManualEquipment(null);
+    setManualPath(null);
     setSelectedCategory(null);
     navigate('/');
   };
@@ -186,8 +186,7 @@ function App() {
             setYear={setReportingYear}
             onBack={() => navigate('/')}
             onComplete={(pathData, year) => {
-              const equipment = pathData[2]; // object with id and name
-              setManualEquipment(equipment);
+              setManualPath(pathData);
               setManualYear(year);
               setShowManualEntry(true);
             }}
@@ -210,7 +209,7 @@ function App() {
 
       {showManualEntry && (
         <ManualEntryPopup
-          equipment={manualEquipment}
+          pathData={manualPath}
           year={manualYear}
           onClose={clearManualState}
           onSave={(data) => {

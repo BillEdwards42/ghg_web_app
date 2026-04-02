@@ -91,11 +91,20 @@ function ManualCategorySelection({ onBack, onComplete, activeYear, setYear }) {
   const handleSelect = (item) => {
     const newPath = [...path, item];
     
-    if (newPath.length === 3) {
+    // Check if the selected Tier 2 is Employee Commuting to bypass Tier 3
+    const isEmployeeCommuting = newPath.length === 2 && (item.id === 'employee commuting' || item.name === '員工通勤');
+    
+    if (newPath.length === 3 || isEmployeeCommuting) {
       // Flow complete
       sessionStorage.removeItem('manual_step');
       sessionStorage.removeItem('manual_path');
-      onComplete(newPath, activeYear);
+      
+      // If we bypassed Tier 3, we need to create a dummy Tier 3 object so useEquipmentForm resolves correctly
+      const finalPath = isEmployeeCommuting 
+        ? [...newPath, { id: 'employee commuting', name: '員工通勤' }] 
+        : newPath;
+        
+      onComplete(finalPath, activeYear);
     } else {
       setPath(newPath);
       setAnimKey(prev => prev + 1);
