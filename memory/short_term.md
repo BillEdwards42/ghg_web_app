@@ -8,49 +8,36 @@ The manual entry system utilizes a **Metadata-Driven Configuration Engine**.
 - `useEquipmentForm.js` extracts normalized string keys (using `toLowerCase().trim()`) from the Tier 2 (`emissionTypeKey`) and Tier 3 (`equipmentTypeKey`) selections to look up the exact form schema in `formConf.js`.
 - This architecture allows a single React component (`ManualEntryPopup.jsx`) to dynamically render over 50 distinct data entry workflows without hardcoding individual forms.
 
-### **Production API Integration (`api.js`)**
-- Switched the base URL to the dev endpoint for isolated testing.
-- Fixed dynamic `facilityId` resolution: The system now correctly extracts the `facilityId` from the user's `selected_loc` in `localStorage` instead of using a hardcoded fallback (`2`).
-- **Removed `fetchSrcAndCustodian`:** The legacy logic that fired secondary API calls to fetch "Source" and "Custodian" defaults was completely stripped out, as the PWA design omits these fields.
+### **Employee Commuting (Grid UI Implementation)**
+- **Selection Bypass:** Modified `ManualCategorySelection.jsx` to recognize "員工通勤" at Tier 2 and trigger `onComplete` immediately, bypassing the unnecessary Tier 3 equipment screen.
+- **Dynamic Grid Rendering:** Implemented a specialized `tableInput` renderer in `ManualEntryPopup.jsx` that fetches commuting modes (高鐵, 捷運, etc.) via `fetchEmployeeCommutingConf` upon mounting.
+- **Data Model:** Rows default to `0` for "員工人次" (Number of People) and "平均通勤距離" (Distance). 
+- **Payload Serialization:** The `saveFormatting` for this category stringifies a cleaned array `employeeCommutingDataDetails` containing only `{ commutingModeId, emissionSourceId, numberOfPeople, distance, remark }`.
 
-### **Configuration Registry (`formConf.js`)**
-- **Form Standardization:** The `topForm` and `bottomForm` arrays were trimmed to strictly include `useDate` (日期), `usage` (耗用量), and `unit` (單位). Unnecessary legacy fields (`source`, `custodian`, `file`) were removed.
-- **Localization:** Injected explicit Traditional Chinese labels (`labelName`) into the configuration (e.g., `equipmentId: '設備名稱'`, `emissionSourceId: '係數名稱'`).
-- **Auto-Filling Units:** Refactored `handleFieldChange` to use a functional React state update (`setFormData(prev => ...)`) to safely merge the auto-resolved `emissionFactorUnit` into the payload without race conditions.
-- **Equipment Date Validation:** Re-implemented `checkEquipmentDate` to rigidly compare the user's `useDate` string against the equipment's `purchaseDate` and `dueDate` to block invalid saves.
+### **Business Trip (Dependent API Orchestration)**
+- **Station Fetching:** Independent station APIs (`fetchTrainStations`, `fetchHsrStations`, `fetchAirports`) are called immediately upon category selection to populate "出發站" and "抵達站" dropdowns.
+- **Date-Dependent Factors:** The "種類選擇" (Type) dropdown remains disabled until a `useDate` is selected, which then triggers `fetchBisTripType`.
+- **Unit Splitting Logic:** Implemented `updateWeightAndDistanceUnit` to parse composite units (e.g., "Pkm") into `unit1` (Passenger) and `unit2` (Km), dynamically toggling the visibility of the "活動數據 2" field.
 
-### **Dynamic UI Renderer (`ManualEntryPopup.jsx`)**
-- **Date Picker & `checkActivityClose` Gatekeeper:** 
-  - Removed the hardcoded January 1st initial date, forcing the user to explicitly select a date to trigger the dependency waterfall.
-  - The `useDate` change handler now strictly awaits the `checkActivityClose` API. If the period is locked, the form clears the date and alerts the user.
-  - Improved the native date picker UX: Uses a `type="text"` trick for the "請選擇日期" placeholder and explicitly calls `showPicker()` on focus/click to immediately open the native calendar UI.
-- **Visual "Disabled" States & Dependency Enforcement:** 
-  - Equipment and Emission Factor dropdowns now strictly evaluate `field.dependency === 'useDate'`. If no date is selected, the `<select>` is native `disabled`.
-  - Added CSS (`.form-group select:disabled`) to apply a transparent grey overlay to locked fields (like the Unit field and dependent dropdowns).
-- **Layout Stability:** Stripped out conditional loading text (`載入選項中...`) that was causing the popup to jitter/shift when the background API fetched dropdown options. Also fixed a bug where `type="hidden"` fields were erroneously rendering visible label text.
+### **Global UI & Validation Refinement**
+- **Success Confirmation Overlay:** Replaced native browser `alert()` with a custom PWA-styled success overlay featuring a green checkmark and a "完成" button to improve user flow.
+- **Implicit Required Fields:** Removed red asterisks (`*`) and refactored `validateForm` to treat all visible, interactive, and enabled fields as mandatory by default.
+- **Payload Compatibility:** Re-integrated hidden legacy fields (`source`, `custodian`, `file`) into the `FormData` payload to ensure compatibility with backend schema expectations.
 
 ---
 
 ## 2. Current Migration Status & Technical Gaps
 
-### **✅ Completed: Categories 1 & 2**
-- **Category 1 (Equipment-Centric):** Stationary Combustion, Mobile Combustion, Industrial Processes, Fugitive Emissions. 
-  - **Status:** Done. The schema resolves correctly, equipment dropdowns wait for the date, units auto-populate, and date bound validations work.
-- **Category 2 (Factor-Centric):** Imported Electricity & Energy. 
-  - **Status:** Done. Emission factors correctly populate the "係數名稱" field.
+### **✅ Completed: Categories 1, 2 & Primary Category 3**
+- **Category 1 (Equipment-Centric):** Stationary/Mobile Combustion, Processes, Fugitive. (Status: Verified)
+- **Category 2 (Factor-Centric):** Electricity & Energy. (Status: Verified)
+- **Category 3 (Employee Commuting & Train/HSR):** Grid UI and Station logic implemented and verified for payload accuracy.
 
-### **⏳ Pending / Unverified: Category 3 (Transportation & Commuting)**
-- **Status:** Code ported, but workflow and UI UX need strict verification.
-- **Technical Gaps:**
-  - Relies heavily on complex custom configurations (`transportationMidForm`, `bisTripConf`).
-  - Contains dynamic unit-toggling logic (`updateWeightAndDistanceUnit`) that swaps `usage1`/`unit1` with `usage2`/`unit2` (e.g., ton-km vs. passenger-km).
-  - Uses conditional UI rendering (`hideUsage2`).
-  - Involves highly custom endpoints for station fetching (Train, High-Speed Rail, Airports) that must correctly map IDs to Names in the dropdowns.
-  - **Employee Commuting:** Utilizes a completely distinct UI component (`TableInput` grid) which bypasses the standard single-record form. This needs deep testing for mobile-responsiveness and data serialization.
+### **⏳ Pending / Unverified: Category 3 (Other Transportation)**
+- **Bus/Taxi/Car/Motorcycle:** Currently use `bisTripConf` with `input` for stations. Need to verify if these require specific "Stations" or if they remain free-text.
+- **Upstream/Downstream Transportation (Ship, Land, Air):** Use `transportationMidForm`. Need to verify unit splitting and departure/arrival station logic.
+- **Category 3 Sub-Categories:** "客戶與訪客交通之排放" and other sub-categories need verification that they map correctly to the existing `bisTripConf` or `transportationMidForm`.
 
 ### **⏳ Pending / Unverified: Categories 4 & 5 (Purchased Goods, Waste, Processing)**
-- **Status:** Code ported, but workflow needs verification.
-- **Technical Gaps:**
-  - These workflows are often not driven by equipment/factors but rely on `getDefaultUnit` executed via the `initSetup` lifecycle hook to pre-fetch the correct metric based on the category path.
-  - Include specific text input fields like `firm` (service provider / manufacturer) which must correctly render and save to the respective specialized POST endpoints.
-  - Needs verification that `initSetup` correctly bypasses the `useDate` dependency waterfall so the form loads smoothly.
+- **Metric Initialization:** These rely on `getDefaultUnit` via `initSetup`. Need to verify that `emissionSourceId` is correctly mapped from the Tier 3 selection and that the `FormData` doesn't contain a redundant `equipmentTypeId` which might crash the backend.
+- **Field Localization:** Verify Traditional Chinese labels for specialized fields like "Firm" (廠商) or "Service Provider" (服務提供商).

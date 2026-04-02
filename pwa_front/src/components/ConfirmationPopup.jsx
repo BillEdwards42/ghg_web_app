@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useOCR } from '../hooks/useOCR';
-import { apiClient } from '../utils/api';
+import { apiClient, fetchImportedElectricityFactors, addImportedElectricityActivity } from '../utils/api';
 
 const TAIWAN_RAILWAY_STATIONS = [
   '基隆', '三坑', '八堵', '七堵', '百福', '五堵', '汐止', '汐科', '南港', '松山', 
@@ -46,6 +46,10 @@ function ConfirmationPopup({ data, file, category, onClose, onSave, activeYear }
   // Electricity specific
   const [usage, setUsage] = useState('');
   const [usageError, setUsageError] = useState('');
+  const [factorOptions, setFactorOptions] = useState([]);
+  const [selectedFactorId, setSelectedFactorId] = useState('');
+  const [unit, setUnit] = useState('度');
+  const [loadingFactors, setLoadingFactors] = useState(false);
 
   // Transport specific
   const [transportType, setTransportType] = useState('高鐵');
@@ -58,6 +62,12 @@ function ConfirmationPopup({ data, file, category, onClose, onSave, activeYear }
   const [co2, setCo2] = useState('');
   const [co2Error, setCo2Error] = useState('');
 
+  const facilityId = useMemo(() => {
+    const loc = JSON.parse(localStorage.getItem('selected_loc') || '{}');
+    return loc.id;
+  }, []);
+
+  // Initialize from OCR Data
   useEffect(() => {
     if (data && schema) {
       if (category === '高鐵/台鐵車票') {
@@ -80,6 +90,7 @@ function ConfirmationPopup({ data, file, category, onClose, onSave, activeYear }
         setPaymentDate(rawDate.replace(/[\/\.]/g, '-'));
         setUsage(data[schema.fields.usage] || '0');
         setUsageError('');
+        setUnit(schema.unit || '度');
       }
     }
   }, [data, schema, category]);
@@ -96,15 +107,47 @@ function ConfirmationPopup({ data, file, category, onClose, onSave, activeYear }
     }
   }, [paymentDate, activeYear]);
 
+  // Electricity Factor Fetching & Smart Matching
+  useEffect(() => {
+    const isElectricity = category === '電費單';
+    if (isElectricity && paymentDate && !dateError && facilityId) {
+      setLoadingFactors(true);
+      fetchImportedElectricityFactors(facilityId, 39, activeYear, paymentDate)
+        .then(res => {
+          const factors = res.data || [];
+          setFactorOptions(factors);
+
+          const targetYearNum = parseInt(activeYear);
+          const electricityFactors = factors
+            .map(f => {
+              const name = f.emissionFactorName || '';
+              const match = name.match(/電力\((\d+)\)/);
+              return match ? { ...f, matchYear: parseInt(match[1]) } : null;
+            })
+            .filter(f => f && f.matchYear <= targetYearNum)
+            .sort((a, b) => b.matchYear - a.matchYear);
+
+          if (electricityFactors.length > 0) {
+            setSelectedFactorId(electricityFactors[0].emissionSourceId);
+            setUnit(electricityFactors[0].emissionFactorUnit || '度');
+          } else {
+            setSelectedFactorId('');
+          }
+        })
+        .catch(err => console.error('Failed to fetch electricity factors', err))
+        .finally(() => setLoadingFactors(false));
+    }
+  }, [category, paymentDate, dateError, facilityId, activeYear]);
+
   if (!data || !schema) return null;
 
-  const handleConfirm = async () => {
+  const handleConfirm = async (e) => {
+    if (e) e.preventDefault();
     if (dateError) return;
-    setUsageError('');
-    setPassengerError('');
-    setCo2Error('');
-
+    
     let entryData = {};
+    const isElectricity = category === '電費單';
+
     if (category === '高鐵/台鐵車票') {
       const isPositiveInt = /^\d+$/.test(passengerCount) && parseInt(passengerCount) > 0;
       if (!isPositiveInt) {
@@ -129,16 +172,24 @@ function ConfirmationPopup({ data, file, category, onClose, onSave, activeYear }
         co2: Number(co2),
         date: paymentDate
       };
-    } else if (category === '電費單') {
-      const isPositiveInt = /^\d+$/.test(usage) && parseInt(usage) > 0;
-      if (!isPositiveInt) {
-        setUsageError('請輸入整數');
+    } else if (isElectricity) {
+      const usageNum = parseFloat(usage);
+      if (isNaN(usageNum) || usageNum <= 0) {
+        setUsageError('請輸入正確的耗用量');
+        return;
+      }
+      if (!selectedFactorId) {
+        alert('請選擇係數名稱');
         return;
       }
       entryData = {
-        category: '電費',
-        usage: Number(usage),
-        date: paymentDate
+        useDate: paymentDate,
+        emissionSourceId: selectedFactorId,
+        usage: usageNum,
+        facilityId: facilityId,
+        year: activeYear,
+        source: '',
+        custodian: ''
       };
     }
     
@@ -147,33 +198,36 @@ function ConfirmationPopup({ data, file, category, onClose, onSave, activeYear }
     try {
       const formData = new FormData();
       if (file) {
-        formData.append('image', file);
-      }
-      formData.append('data', JSON.stringify(entryData));
-      formData.append('category', category);
-
-      // GitHub Pages POC Bypass
-      if (window.location.hostname.includes('github.io')) {
-        alert("⚠️ [POC Demo Mode] 資料已成功在前端模擬送出！");
-        setIsSubmitting(false);
-        onSave();
-        return;
+        formData.append('file', file);
       }
 
-      // Use the centralized Axios instance to send to our modular rick_store endpoint
-      console.log('Sending data to rick_store...', { category, entryData, fileName: file?.name });
+      if (isElectricity) {
+        Object.entries(entryData).forEach(([key, val]) => {
+          formData.append(key, val);
+        });
+        await addImportedElectricityActivity(formData);
+        alert('電力數據已成功儲存');
+      } else {
+        formData.append('data', JSON.stringify(entryData));
+        formData.append('category', category);
+        
+        if (window.location.hostname.includes('github.io')) {
+          alert("⚠️ [POC Demo Mode] 資料已成功在前端模擬送出！");
+          setIsSubmitting(false);
+          onSave();
+          return;
+        }
+
+        const response = await apiClient.post('/rick_store', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        alert(response.data.message || '資料已成功傳送！');
+      }
       
-      const response = await apiClient.post('/rick_store', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-
-      // Read the exact message string sent by the backend's res.json()
-      alert(response.data.message || '資料已成功傳送！');
       onSave();
     } catch (err) {
       console.error('Submission error:', err);
-      // Extract backend error or fallback
-      const errorMsg = err.response?.data?.error || '資料已成功傳送！';
+      const errorMsg = err.response?.data?.message || err.response?.data?.error || '儲存失敗';
       alert(errorMsg);
       onSave();
     } finally {
@@ -187,111 +241,133 @@ function ConfirmationPopup({ data, file, category, onClose, onSave, activeYear }
   const currentStationList = transportType === '台鐵' ? TAIWAN_RAILWAY_STATIONS : HIGH_SPEED_RAIL_STATIONS;
 
   return (
-    <div id="confirmation-popup" className="popup-backdrop" style={{ display: 'flex' }}>
-      <div className="popup-card">
-        <h3>{schema.title}</h3>
-        <div className="popup-form">
-          {isTransport && (
-            <>
-              <div className="form-group">
-                <label>車種</label>
-                <select 
-                  className="form-input" 
-                  value={transportType} 
-                  onChange={(e) => {
-                    const newType = e.target.value;
-                    setTransportType(newType);
-                    const newList = newType === '台鐵' ? TAIWAN_RAILWAY_STATIONS : HIGH_SPEED_RAIL_STATIONS;
-                    setFromName(newList[0]);
-                    setToName(newList[1] || newList[0]);
-                  }}
-                  style={{ width: '100%', padding: '12px', border: '1.5px solid var(--color-divider)', borderRadius: 'var(--radius-sm)' }}
-                >
-                  <option value="台鐵">台鐵</option>
-                  <option value="高鐵">高鐵</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label>日期</label>
-                <input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
-                {dateError && <div className="field-error">{dateError}</div>}
-              </div>
-              <div className="form-group">
-                <label>起點</label>
-                <select 
-                  className="form-input" 
-                  value={fromName} 
-                  onChange={(e) => setFromName(e.target.value)}
-                  style={{ width: '100%', padding: '12px', border: '1.5px solid var(--color-divider)', borderRadius: 'var(--radius-sm)' }}
-                >
-                  {currentStationList.map(station => (
-                    <option key={station} value={station}>{station}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>終點</label>
-                <select 
-                  className="form-input" 
-                  value={toName} 
-                  onChange={(e) => setToName(e.target.value)}
-                  style={{ width: '100%', padding: '12px', border: '1.5px solid var(--color-divider)', borderRadius: 'var(--radius-sm)' }}
-                >
-                  {currentStationList.map(station => (
-                    <option key={station} value={station}>{station}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>人次</label>
-                <input type="text" value={passengerCount} onChange={(e) => setPassengerCount(e.target.value)} />
-                {passengerError && <div className="field-error">{passengerError}</div>}
-              </div>
-            </>
-          )}
-
-          {isWater && (
-            <>
-              <div className="form-group">
-                <label>日期</label>
-                <input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
-                {dateError && <div className="field-error">{dateError}</div>}
-              </div>
-              <div className="form-group">
-                <label>CO2</label>
-                <div className="input-with-unit">
-                  <input type="text" value={co2} onChange={(e) => setCo2(e.target.value)} />
-                  <span className="input-unit">kg</span>
-                </div>
-                {co2Error && <div className="field-error">{co2Error}</div>}
-              </div>
-            </>
-          )}
-
-          {isElectricity && (
-            <>
-              <div className="form-group">
-                <label>單據/登錄日期</label>
-                <input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
-                {dateError && <div className="field-error">{dateError}</div>}
-              </div>
-              <div className="form-group">
-                <label>耗用量</label>
-                <div className="input-with-unit">
-                  <input type="text" value={usage} onChange={(e) => setUsage(e.target.value)} />
-                  <span className="input-unit">{schema.unit}</span>
-                </div>
-                {usageError && <div className="field-error">{usageError}</div>}
-              </div>
-            </>
-          )}
+    <div className="popup-backdrop" style={{ display: 'flex' }}>
+      <div className="popup-card manual-popup" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
+        <div className="popup-header">
+          <h3 style={{ margin: 0 }}>{schema.title}</h3>
+          <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--color-text-secondary)', fontWeight: '600' }}>
+            報告年度：<span style={{ color: 'var(--color-primary)' }}>{activeYear}</span>
+          </p>
         </div>
-        <div className="popup-actions">
-          <button className="btn-secondary" onClick={onClose} disabled={isSubmitting}>取消</button>
-          <button className="btn-primary" onClick={handleConfirm} disabled={isSubmitting || !!dateError}>
-            {isSubmitting ? '傳送中...' : '確認儲存'}
-          </button>
-        </div>
+
+        <form className="popup-form" onSubmit={handleConfirm} style={{ marginTop: '16px' }}>
+          <div className="form-section">
+            {isTransport && (
+              <>
+                <div className="form-group">
+                  <label>車種</label>
+                  <select 
+                    value={transportType} 
+                    onChange={(e) => {
+                      const newType = e.target.value;
+                      setTransportType(newType);
+                      const newList = newType === '台鐵' ? TAIWAN_RAILWAY_STATIONS : HIGH_SPEED_RAIL_STATIONS;
+                      setFromName(newList[0]);
+                      setToName(newList[1] || newList[0]);
+                    }}
+                  >
+                    <option value="台鐵">台鐵</option>
+                    <option value="高鐵">高鐵</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>日期</label>
+                  <input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
+                  {dateError && <div className="field-error-msg" style={{ color: 'var(--color-error)', fontSize: '0.75rem' }}>{dateError}</div>}
+                </div>
+                <div className="form-group">
+                  <label>起點</label>
+                  <select value={fromName} onChange={(e) => setFromName(e.target.value)}>
+                    {currentStationList.map(station => (
+                      <option key={station} value={station}>{station}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>終點</label>
+                  <select value={toName} onChange={(e) => setToName(e.target.value)}>
+                    {currentStationList.map(station => (
+                      <option key={station} value={station}>{station}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>人次</label>
+                  <input type="text" value={passengerCount} onChange={(e) => setPassengerCount(e.target.value)} />
+                  {passengerError && <div className="field-error-msg" style={{ color: 'var(--color-error)', fontSize: '0.75rem' }}>{passengerError}</div>}
+                </div>
+              </>
+            )}
+
+            {isWater && (
+              <>
+                <div className="form-group">
+                  <label>日期</label>
+                  <input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
+                  {dateError && <div className="field-error-msg" style={{ color: 'var(--color-error)', fontSize: '0.75rem' }}>{dateError}</div>}
+                </div>
+                <div className="form-group">
+                  <label>CO2</label>
+                  <div className="input-with-unit">
+                    <input type="text" value={co2} onChange={(e) => setCo2(e.target.value)} />
+                    <span className="input-unit">kg</span>
+                  </div>
+                  {co2Error && <div className="field-error-msg" style={{ color: 'var(--color-error)', fontSize: '0.75rem' }}>{co2Error}</div>}
+                </div>
+              </>
+            )}
+
+            {isElectricity && (
+              <>
+                <div className="form-group">
+                  <label>日期</label>
+                  <input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
+                  {dateError && <div className="field-error-msg" style={{ color: 'var(--color-error)', fontSize: '0.75rem' }}>{dateError}</div>}
+                </div>
+                
+                <div className="form-group">
+                  <label>係數名稱</label>
+                  <select
+                    value={selectedFactorId}
+                    onChange={(e) => {
+                      setSelectedFactorId(e.target.value);
+                      const selected = factorOptions.find(f => String(f.emissionSourceId) === String(e.target.value));
+                      if (selected) setUnit(selected.emissionFactorUnit || '度');
+                    }}
+                    disabled={loadingFactors || !paymentDate || !!dateError}
+                  >
+                    <option value="" disabled>{loadingFactors ? '載入中...' : '請選擇'}</option>
+                    {factorOptions.map(f => (
+                      <option key={f.emissionSourceId} value={f.emissionSourceId}>
+                        {f.emissionFactorName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>耗用量</label>
+                  <input type="number" step="any" value={usage} onChange={(e) => setUsage(e.target.value)} />
+                  {usageError && <div className="field-error-msg" style={{ color: 'var(--color-error)', fontSize: '0.75rem' }}>{usageError}</div>}
+                </div>
+
+                <div className="form-group">
+                  <label>單位</label>
+                  <input type="text" value={unit} disabled />
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="popup-actions" style={{ marginTop: '24px', position: 'sticky', bottom: 0, background: 'white', paddingTop: '12px' }}>
+            <button type="button" className="btn-secondary" onClick={onClose} disabled={isSubmitting} style={{ flex: 1 }}>
+              取消
+            </button>
+            <button type="submit" className="btn-primary" disabled={isSubmitting || !!dateError || (isElectricity && (!selectedFactorId || !usage))} style={{ flex: 1 }}>
+              {isSubmitting ? '儲存中...' : '確認儲存'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

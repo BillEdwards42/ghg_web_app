@@ -12,6 +12,7 @@ function ManualEntryPopup({ pathData, year, onClose, onSave }) {
   const [errors, setErrors] = useState({});
   const [hideUsage2, setHideUsage2] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const facilityId = useMemo(() => {
     const loc = JSON.parse(localStorage.getItem('selected_loc') || '{}');
@@ -26,8 +27,9 @@ function ManualEntryPopup({ pathData, year, onClose, onSave }) {
       
       const initialData = {};
       [...resolved.topForm, ...resolved.middleForm, ...resolved.bottomForm].forEach(field => {
-        if (field._key === 'useDate') initialData[field._key] = '2026-04-01';
+        if (field._key === 'useDate') initialData[field._key] = '';
         if (field._key === 'useYear') initialData[field._key] = year;
+        if (field.type === 'hidden') initialData[field._key] = '';
       });
       setFormData(initialData);
 
@@ -196,8 +198,7 @@ function ManualEntryPopup({ pathData, year, onClose, onSave }) {
       }
 
       await schema.apis.add(payload);
-      alert('資料已成功儲存');
-      onSave(formData);
+      setShowSuccess(true);
     } catch (err) {
       console.error('Save failed:', err);
       alert('儲存失敗：' + (err.response?.data?.message || err.message));
@@ -327,7 +328,6 @@ function ManualEntryPopup({ pathData, year, onClose, onSave }) {
                 value={value}
                 onChange={(e) => handleFieldChange(field, e.target.value)}
                 disabled={field.disabled || (field.dependency === 'useDate' && !formData.useDate)}
-                required={field.required}
                 style={{ borderColor: error ? 'var(--color-error)' : '' }}
               >
                 <option value="" disabled hidden>請選擇</option>
@@ -352,7 +352,6 @@ function ManualEntryPopup({ pathData, year, onClose, onSave }) {
                 placeholder="請選擇日期"
                 value={value}
                 onChange={(e) => handleFieldChange(field, e.target.value)}
-                required={field.required}
                 min={`${year}-01-01`}
                 max={`${year}-12-31`}
                 style={{ borderColor: error ? 'var(--color-error)' : '' }}
@@ -368,12 +367,7 @@ function ManualEntryPopup({ pathData, year, onClose, onSave }) {
                 value={value} 
                 onChange={(e) => handleFieldChange(field, e.target.value)}
                 disabled={field.disabled}
-                required={field.required}
-                style={{ 
-                  borderColor: error ? 'var(--color-error)' : '',
-                  backgroundColor: field.disabled ? 'var(--color-bg-secondary)' : undefined,
-                  cursor: field.disabled ? 'not-allowed' : undefined
-                }}
+                style={{ borderColor: error ? 'var(--color-error)' : '' }}
                 step="any"
               />
             )}
@@ -392,36 +386,63 @@ function ManualEntryPopup({ pathData, year, onClose, onSave }) {
 
   return (
     <div className="popup-backdrop" style={{ display: 'flex' }}>
-      <div className="popup-card manual-popup" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
-        <div className="popup-header">
-          <h3 style={{ margin: 0 }}>{pathData[2]?.name}</h3>
-          <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--color-text-secondary)', fontWeight: '600' }}>
-            報告年度：<span style={{ color: 'var(--color-primary)' }}>{year}</span>
-          </p>
-        </div>
-
-        {schemaLoading || !schema ? (
-          <div className="loading-state" style={{ padding: '40px', textAlign: 'center' }}>
-            <div className="spinner"></div>
-            <p>載入表單配置...</p>
+      <div className="popup-card manual-popup" style={{ maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
+        {showSuccess ? (
+          <div className="success-overlay" style={{ padding: '40px 20px', textAlign: 'center', animation: 'fadeSlideUp 0.4s ease' }}>
+            <div className="success-icon-wrap" style={{ 
+              width: '80px', height: '80px', background: 'rgba(34, 197, 94, 0.1)', color: '#22c55e', 
+              borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' 
+            }}>
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </div>
+            <h2 style={{ margin: '0 0 8px', color: 'var(--color-text)' }}>儲存成功</h2>
+            <p style={{ margin: '0 0 32px', color: 'var(--color-text-secondary)', fontSize: '1rem' }}>資料已成功紀錄至系統</p>
+            <button 
+              className="btn-primary" 
+              onClick={() => {
+                setShowSuccess(false);
+                onSave(formData);
+              }}
+              style={{ width: '100%', padding: '14px' }}
+            >
+              完成
+            </button>
           </div>
         ) : (
-          <form className="popup-form" onSubmit={handleSubmit} style={{ marginTop: '16px' }}>
-            <div className="form-section">
-              {schema.topForm.map(renderField)}
-              {schema.middleForm.map(renderField)}
-              {schema.bottomForm.map(renderField)}
+          <>
+            <div className="popup-header">
+              <h3 style={{ margin: 0 }}>{pathData[2]?.name}</h3>
+              <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--color-text-secondary)', fontWeight: '600' }}>
+                報告年度：<span style={{ color: 'var(--color-primary)' }}>{year}</span>
+              </p>
             </div>
 
-            <div className="popup-actions" style={{ marginTop: '24px', position: 'sticky', bottom: 0, background: 'white', paddingTop: '12px' }}>
-              <button type="button" className="btn-secondary" onClick={onClose} disabled={isSubmitting} style={{ flex: 1 }}>
-                取消
-              </button>
-              <button type="submit" className="btn-primary" disabled={isSubmitting} style={{ flex: 1 }}>
-                {isSubmitting ? '儲存中...' : '確認儲存'}
-              </button>
-            </div>
-          </form>
+            {schemaLoading || !schema ? (
+              <div className="loading-state" style={{ padding: '40px', textAlign: 'center' }}>
+                <div className="spinner"></div>
+                <p>載入表單配置...</p>
+              </div>
+            ) : (
+              <form className="popup-form" onSubmit={handleSubmit} style={{ marginTop: '16px' }}>
+                <div className="form-section">
+                  {schema.topForm.map(renderField)}
+                  {schema.middleForm.map(renderField)}
+                  {schema.bottomForm.map(renderField)}
+                </div>
+
+                <div className="popup-actions" style={{ marginTop: '24px', position: 'sticky', bottom: 0, background: 'white', paddingTop: '12px' }}>
+                  <button type="button" className="btn-secondary" onClick={onClose} disabled={isSubmitting} style={{ flex: 1 }}>
+                    取消
+                  </button>
+                  <button type="submit" className="btn-primary" disabled={isSubmitting} style={{ flex: 1 }}>
+                    {isSubmitting ? '儲存中...' : '確認儲存'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </>
         )}
       </div>
     </div>

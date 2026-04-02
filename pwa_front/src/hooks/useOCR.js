@@ -108,10 +108,9 @@ export const useOCR = () => {
       const file = await compressImage(rawFile);
       const formData = new FormData();
       formData.append('file', file);
-      // 新增：把選擇的分類傳給後端，由後端統一進行邏輯與 Schema 驗證
       formData.append('category', selectedCategory);
 
-      // We direct the request to the secure Node.js proxy utilizing our centralized Axios client
+      // The apiClient already has x-esg-system and X-Auth-Token in its defaults
       const response = await apiClient.post('/ocr', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'

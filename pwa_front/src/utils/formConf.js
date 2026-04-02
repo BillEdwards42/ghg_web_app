@@ -315,7 +315,7 @@ const bisTripConf = (stationApi, stationApiFormat = { idKey: 'id', nameKey: 'nam
     middleForm: [
       {
         _key: 'emissionSourceId',
-        labelName: 'type',
+        labelName: '種類選擇',
         type: 'select',
         api: (params) => fetchBisTripType(...params).then(res => formatRes(res, 'emissionSourceId', 'emissionFactorName')),
         handleSelectorChange: props => {
@@ -324,15 +324,19 @@ const bisTripConf = (stationApi, stationApiFormat = { idKey: 'id', nameKey: 'nam
         },
         dependency: 'useDate'
       },
-      { _key: 'departure', labelName: 'departureStation', ...stationField },
-      { _key: 'destination', labelName: 'arrivalStation', ...stationField },
+      { _key: 'departure', labelName: '出發站', ...stationField },
+      { _key: 'destination', labelName: '抵達站', ...stationField },
       ...extraFields,
-      { _key: 'usage1', type: 'inputNumber', required: true },
-      { _key: 'unit1', labelName: 'unit', type: 'input', disabled: true },
-      { _key: 'usage2', labelName: 'distance', type: 'inputNumber', hideKey: 'hideUsage2' },
-      { _key: 'unit2', labelName: 'unit', type: 'input', disabled: true, hideKey: 'hideUsage2' }
+      { _key: 'usage1', labelName: '活動數據 1', type: 'inputNumber' },
+      { _key: 'unit1', labelName: '單位', type: 'input', disabled: true },
+      { _key: 'usage2', labelName: '活動數據 2', type: 'inputNumber', hideKey: 'hideUsage2' },
+      { _key: 'unit2', labelName: '單位', type: 'input', disabled: true, hideKey: 'hideUsage2' }
     ],
-    bottomForm: bottomForm.slice(2, 5),
+    bottomForm: [
+      { _key: 'source', type: 'hidden' },
+      { _key: 'custodian', type: 'hidden' },
+      { _key: 'file', type: 'hidden' }
+    ],
     apis: { add: addBusinessTrip }
   };
 };
