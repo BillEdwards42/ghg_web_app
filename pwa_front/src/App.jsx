@@ -10,11 +10,12 @@ import ManualEntryPopup from './components/ManualEntryPopup';
 import { setAuthHeaders, apiClient } from './utils/api';
 
 function App() {
+  const isFirstLoad = React.useRef(true);
   // Initial value?
   const [authToken, setAuthToken] = useState(() => {
     const savedToken = localStorage.getItem('authToken');
     if (savedToken) {
-      setAuthHeaders(savedToken); // Is this needed? Need to test.
+      setAuthHeaders(savedToken); 
     }
     return savedToken;
   });
@@ -44,11 +45,9 @@ function App() {
 
     window.addEventListener('unauthorized', handleUnauthorized);
     
-    // Startup Validation: Verify existing token on app launch
-    // Skip this if we just logged in (handled by handleLogin)
-    const isInitialMount = !window._appInitialized;
-    if (authToken && isInitialMount) {
-      window._appInitialized = true;
+    // Startup Validation: Verify existing token on app launch ONLY on cold start
+    if (authToken && isFirstLoad.current) {
+      isFirstLoad.current = false;
       apiClient.get('/checkUserToken').catch((err) => {
         // If 401, the interceptor will trigger the 'unauthorized' event
         console.error('Session validation failed:', err);

@@ -32,10 +32,14 @@
   - Updated `index.html` with the modern `<meta name="mobile-web-app-capable" content="yes">` tag to resolve deprecation warnings.
 - **Outcome**: The application now loads successfully locally and in subfolder environments with the Unified Year logic fully functional.
 
-## 6. Login Redirect Loop on Mobile
-- **Problem**: After logging in on a mobile device, the Home page would show briefly and then redirect back to Login.
-- **Root Cause**: A race condition in `App.jsx`. The startup `useEffect` called `/checkUserToken` immediately after `handleLogin` updated the `authToken` state, sometimes before headers were synchronized or due to sensitive session handling on the backend.
-- **Solution**: Implemented a `window._appInitialized` flag to ensure `/checkUserToken` only runs on the very first app mount (cold start) and is skipped during the transition from the Login component to the Home component.
+## 6. Recursive Login/Logout Loop
+- **Problem**: After logging in, the app would sometimes enter an infinite loop of 401 errors and logouts, eventually crashing the browser.
+- **Root Cause**: 
+    1.  **Interceptor Recursion**: When a token was invalid, any request (including the logout request itself) would return a 401. The interceptor caught this and triggered a global `unauthorized` event, which called `handleLogout`. `handleLogout` then called `DELETE /session`, which also returned a 401, triggering the interceptor again.
+    2.  **Race Condition**: The startup `useEffect` called `/checkUserToken` on every `authToken` state change. If the state updated before the headers were fully synchronized or before the component finished a transition, it could trigger a false 401.
+- **Solution**: 
+    1.  Updated `api.js` interceptor to ignore 401 errors from the `DELETE /session` endpoint.
+    2.  Implemented a `useRef(true)` based `isFirstLoad` flag in `App.jsx` to ensure `/checkUserToken` only runs on the initial application mount (cold start) and never during the login-to-home transition.
 
 ## 7. Transportation Dropdown Failure (Registry Blocker)
 - **Problem**: "出發站" and "抵達站" fields for specialized Category 3 methods (HSR, Train, MRT, Air) remained as text inputs instead of dropdowns.
