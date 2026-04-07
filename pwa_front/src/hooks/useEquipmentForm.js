@@ -19,12 +19,12 @@ export function useEquipmentForm() {
     setError(null);
 
     try {
-      const tier2Key = String(pathData[1].emissionTypeKey || pathData[1].id).toLowerCase().trim();
-      const tier3Key = String(pathData[2].equipmentTypeKey || pathData[2].id).toLowerCase().trim();
+      const tier2Key = String(pathData[1].emissionTypeKey || pathData[1].id).toLowerCase().replace(/_/g, ' ').trim();
+      const tier3Key = String(pathData[2].equipmentTypeKey || pathData[2].id).toLowerCase().replace(/_/g, ' ').trim();
       const tier2Name = String(pathData[1].name).toLowerCase().trim();
       const tier3Name = String(pathData[2].name).toLowerCase().trim();
 
-      // 1. Lookup configurations using normalized keys
+      // 1. Lookup configurations using normalized keys (priority: Tier 3 Key > Tier 3 Name > Tier 2 Key > Tier 2 Name)
       const equipmentConf = formConf[tier3Key] || formConf[tier3Name] || {};
       const categoryConf = formConf[tier2Key] || formConf[tier2Name] || {};
       const defaultConf = formConf.default;

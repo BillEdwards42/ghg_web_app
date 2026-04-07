@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useOCR } from '../hooks/useOCR';
-import { apiClient, fetchImportedElectricityFactors, addImportedElectricityActivity } from '../utils/api';
+import { apiClient, fetchImportedElectricityFactors, addImportedElectricityActivity, addBusinessTrip } from '../utils/api';
+import { EMISSION_SOURCE, TRANSPORTATION_TYPE } from '../utils/EmissionSrc';
+
+const { TRAIN, HIGH_SPEED_RAIL } = TRANSPORTATION_TYPE;
+const { BUSINESS_TRIP, IMPORTED_ELECTRICITY } = EMISSION_SOURCE;
 
 const TAIWAN_RAILWAY_STATIONS = [
   '基隆', '三坑', '八堵', '七堵', '百福', '五堵', '汐止', '汐科', '南港', '松山', 
@@ -38,6 +42,7 @@ function ConfirmationPopup({ data, file, category, onClose, onSave, activeYear }
   const schema = UTILITY_SCHEMAS[category];
   
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   // Common
   const [paymentDate, setPaymentDate] = useState('');
@@ -147,19 +152,28 @@ function ConfirmationPopup({ data, file, category, onClose, onSave, activeYear }
     
     let entryData = {};
     const isElectricity = category === '電費單';
+    const isTransport = category === '高鐵/台鐵車票';
 
-    if (category === '高鐵/台鐵車票') {
+    if (isTransport) {
       const isPositiveInt = /^\d+$/.test(passengerCount) && parseInt(passengerCount) > 0;
       if (!isPositiveInt) {
         setPassengerError('請輸入整數');
         return;
       }
+      
+      // Map to Production Keys for Registry resolution (if needed) or direct API submission
+      const equipmentTypeKey = transportType === '台鐵' ? TRAIN : HIGH_SPEED_RAIL;
+      
       entryData = {
-        type: transportType,
-        from: fromName,
-        to: toName,
-        passengers: Number(passengerCount),
-        date: paymentDate
+        useDate: paymentDate,
+        departure: fromName,
+        destination: toName,
+        usage1: Number(passengerCount),
+        facilityId: facilityId,
+        year: activeYear,
+        source: '',
+        custodian: '',
+        equipmentTypeKey: equipmentTypeKey
       };
     } else if (category === '水費單') {
       const isPositiveInt = /^\d+$/.test(co2) && parseInt(co2) > 0;
@@ -206,30 +220,33 @@ function ConfirmationPopup({ data, file, category, onClose, onSave, activeYear }
           formData.append(key, val);
         });
         await addImportedElectricityActivity(formData);
-        alert('電力數據已成功儲存');
+        setShowSuccess(true);
+      } else if (isTransport) {
+        Object.entries(entryData).forEach(([key, val]) => {
+          formData.append(key, val);
+        });
+        // Use production business trip API
+        await addBusinessTrip(formData);
+        setShowSuccess(true);
       } else {
         formData.append('data', JSON.stringify(entryData));
         formData.append('category', category);
         
         if (window.location.hostname.includes('github.io')) {
-          alert("⚠️ [POC Demo Mode] 資料已成功在前端模擬送出！");
+          setShowSuccess(true);
           setIsSubmitting(false);
-          onSave();
           return;
         }
 
         const response = await apiClient.post('/rick_store', formData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
-        alert(response.data.message || '資料已成功傳送！');
+        setShowSuccess(true);
       }
-      
-      onSave();
     } catch (err) {
       console.error('Submission error:', err);
       const errorMsg = err.response?.data?.message || err.response?.data?.error || '儲存失敗';
       alert(errorMsg);
-      onSave();
     } finally {
       setIsSubmitting(false);
     }
@@ -242,132 +259,159 @@ function ConfirmationPopup({ data, file, category, onClose, onSave, activeYear }
 
   return (
     <div className="popup-backdrop" style={{ display: 'flex' }}>
-      <div className="popup-card manual-popup" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
-        <div className="popup-header">
-          <h3 style={{ margin: 0 }}>{schema.title}</h3>
-          <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--color-text-secondary)', fontWeight: '600' }}>
-            報告年度：<span style={{ color: 'var(--color-primary)' }}>{activeYear}</span>
-          </p>
-        </div>
-
-        <form className="popup-form" onSubmit={handleConfirm} style={{ marginTop: '16px' }}>
-          <div className="form-section">
-            {isTransport && (
-              <>
-                <div className="form-group">
-                  <label>車種</label>
-                  <select 
-                    value={transportType} 
-                    onChange={(e) => {
-                      const newType = e.target.value;
-                      setTransportType(newType);
-                      const newList = newType === '台鐵' ? TAIWAN_RAILWAY_STATIONS : HIGH_SPEED_RAIL_STATIONS;
-                      setFromName(newList[0]);
-                      setToName(newList[1] || newList[0]);
-                    }}
-                  >
-                    <option value="台鐵">台鐵</option>
-                    <option value="高鐵">高鐵</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>日期</label>
-                  <input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
-                  {dateError && <div className="field-error-msg" style={{ color: 'var(--color-error)', fontSize: '0.75rem' }}>{dateError}</div>}
-                </div>
-                <div className="form-group">
-                  <label>起點</label>
-                  <select value={fromName} onChange={(e) => setFromName(e.target.value)}>
-                    {currentStationList.map(station => (
-                      <option key={station} value={station}>{station}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>終點</label>
-                  <select value={toName} onChange={(e) => setToName(e.target.value)}>
-                    {currentStationList.map(station => (
-                      <option key={station} value={station}>{station}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>人次</label>
-                  <input type="text" value={passengerCount} onChange={(e) => setPassengerCount(e.target.value)} />
-                  {passengerError && <div className="field-error-msg" style={{ color: 'var(--color-error)', fontSize: '0.75rem' }}>{passengerError}</div>}
-                </div>
-              </>
-            )}
-
-            {isWater && (
-              <>
-                <div className="form-group">
-                  <label>日期</label>
-                  <input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
-                  {dateError && <div className="field-error-msg" style={{ color: 'var(--color-error)', fontSize: '0.75rem' }}>{dateError}</div>}
-                </div>
-                <div className="form-group">
-                  <label>CO2</label>
-                  <div className="input-with-unit">
-                    <input type="text" value={co2} onChange={(e) => setCo2(e.target.value)} />
-                    <span className="input-unit">kg</span>
-                  </div>
-                  {co2Error && <div className="field-error-msg" style={{ color: 'var(--color-error)', fontSize: '0.75rem' }}>{co2Error}</div>}
-                </div>
-              </>
-            )}
-
-            {isElectricity && (
-              <>
-                <div className="form-group">
-                  <label>日期</label>
-                  <input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
-                  {dateError && <div className="field-error-msg" style={{ color: 'var(--color-error)', fontSize: '0.75rem' }}>{dateError}</div>}
-                </div>
-                
-                <div className="form-group">
-                  <label>係數名稱</label>
-                  <select
-                    value={selectedFactorId}
-                    onChange={(e) => {
-                      setSelectedFactorId(e.target.value);
-                      const selected = factorOptions.find(f => String(f.emissionSourceId) === String(e.target.value));
-                      if (selected) setUnit(selected.emissionFactorUnit || '度');
-                    }}
-                    disabled={loadingFactors || !paymentDate || !!dateError}
-                  >
-                    <option value="" disabled>{loadingFactors ? '載入中...' : '請選擇'}</option>
-                    {factorOptions.map(f => (
-                      <option key={f.emissionSourceId} value={f.emissionSourceId}>
-                        {f.emissionFactorName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label>耗用量</label>
-                  <input type="number" step="any" value={usage} onChange={(e) => setUsage(e.target.value)} />
-                  {usageError && <div className="field-error-msg" style={{ color: 'var(--color-error)', fontSize: '0.75rem' }}>{usageError}</div>}
-                </div>
-
-                <div className="form-group">
-                  <label>單位</label>
-                  <input type="text" value={unit} disabled />
-                </div>
-              </>
-            )}
-          </div>
-
-          <div className="popup-actions" style={{ marginTop: '24px', position: 'sticky', bottom: 0, background: 'white', paddingTop: '12px' }}>
-            <button type="button" className="btn-secondary" onClick={onClose} disabled={isSubmitting} style={{ flex: 1 }}>
-              取消
-            </button>
-            <button type="submit" className="btn-primary" disabled={isSubmitting || !!dateError || (isElectricity && (!selectedFactorId || !usage))} style={{ flex: 1 }}>
-              {isSubmitting ? '儲存中...' : '確認儲存'}
+      <div className="popup-card manual-popup" style={{ maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
+        {showSuccess ? (
+          <div className="success-overlay" style={{ padding: '40px 20px', textAlign: 'center', animation: 'fadeSlideUp 0.4s ease' }}>
+            <div className="success-icon-wrap" style={{ 
+              width: '80px', height: '80px', background: 'rgba(34, 197, 94, 0.1)', color: '#22c55e', 
+              borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' 
+            }}>
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </div>
+            <h2 style={{ margin: '0 0 8px', color: 'var(--color-text)' }}>儲存成功</h2>
+            <p style={{ margin: '0 0 32px', color: 'var(--color-text-secondary)', fontSize: '1rem' }}>資料已成功紀錄至系統</p>
+            <button 
+              className="btn-primary" 
+              onClick={() => {
+                setShowSuccess(false);
+                onSave();
+              }}
+              style={{ width: '100%', padding: '14px' }}
+            >
+              完成
             </button>
           </div>
-        </form>
+        ) : (
+          <>
+            <div className="popup-header">
+              <h3 style={{ margin: 0 }}>{schema.title}</h3>
+              <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--color-text-secondary)', fontWeight: '600' }}>
+                報告年度：<span style={{ color: 'var(--color-primary)' }}>{activeYear}</span>
+              </p>
+            </div>
+
+            <form className="popup-form" onSubmit={handleConfirm} style={{ marginTop: '16px' }}>
+              <div className="form-section">
+                {isTransport && (
+                  <>
+                    <div className="form-group">
+                      <label>車種</label>
+                      <select 
+                        value={transportType} 
+                        onChange={(e) => {
+                          const newType = e.target.value;
+                          setTransportType(newType);
+                          const newList = newType === '台鐵' ? TAIWAN_RAILWAY_STATIONS : HIGH_SPEED_RAIL_STATIONS;
+                          setFromName(newList[0]);
+                          setToName(newList[1] || newList[0]);
+                        }}
+                      >
+                        <option value="台鐵">台鐵</option>
+                        <option value="高鐵">高鐵</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>日期</label>
+                      <input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
+                      {dateError && <div className="field-error-msg" style={{ color: 'var(--color-error)', fontSize: '0.75rem' }}>{dateError}</div>}
+                    </div>
+                    <div className="form-group">
+                      <label>起點</label>
+                      <select value={fromName} onChange={(e) => setFromName(e.target.value)}>
+                        {currentStationList.map(station => (
+                          <option key={station} value={station}>{station}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>終點</label>
+                      <select value={toName} onChange={(e) => setToName(e.target.value)}>
+                        {currentStationList.map(station => (
+                          <option key={station} value={station}>{station}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>人次</label>
+                      <input type="text" value={passengerCount} onChange={(e) => setPassengerCount(e.target.value)} />
+                      {passengerError && <div className="field-error-msg" style={{ color: 'var(--color-error)', fontSize: '0.75rem' }}>{passengerError}</div>}
+                    </div>
+                  </>
+                )}
+
+                {isWater && (
+                  <>
+                    <div className="form-group">
+                      <label>日期</label>
+                      <input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
+                      {dateError && <div className="field-error-msg" style={{ color: 'var(--color-error)', fontSize: '0.75rem' }}>{dateError}</div>}
+                    </div>
+                    <div className="form-group">
+                      <label>CO2</label>
+                      <div className="input-with-unit">
+                        <input type="text" value={co2} onChange={(e) => setCo2(e.target.value)} />
+                        <span className="input-unit">kg</span>
+                      </div>
+                      {co2Error && <div className="field-error-msg" style={{ color: 'var(--color-error)', fontSize: '0.75rem' }}>{co2Error}</div>}
+                    </div>
+                  </>
+                )}
+
+                {isElectricity && (
+                  <>
+                    <div className="form-group">
+                      <label>日期</label>
+                      <input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
+                      {dateError && <div className="field-error-msg" style={{ color: 'var(--color-error)', fontSize: '0.75rem' }}>{dateError}</div>}
+                    </div>
+                    
+                    <div className="form-group">
+                      <label>係數名稱</label>
+                      <select
+                        value={selectedFactorId}
+                        onChange={(e) => {
+                          setSelectedFactorId(e.target.value);
+                          const selected = factorOptions.find(f => String(f.emissionSourceId) === String(e.target.value));
+                          if (selected) setUnit(selected.emissionFactorUnit || '度');
+                        }}
+                        disabled={loadingFactors || !paymentDate || !!dateError}
+                      >
+                        <option value="" disabled>{loadingFactors ? '載入中...' : '請選擇'}</option>
+                        {factorOptions.map(f => (
+                          <option key={f.emissionSourceId} value={f.emissionSourceId}>
+                            {f.emissionFactorName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label>耗用量</label>
+                      <input type="number" step="any" value={usage} onChange={(e) => setUsage(e.target.value)} />
+                      {usageError && <div className="field-error-msg" style={{ color: 'var(--color-error)', fontSize: '0.75rem' }}>{usageError}</div>}
+                    </div>
+
+                    <div className="form-group">
+                      <label>單位</label>
+                      <input type="text" value={unit} disabled />
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="popup-actions" style={{ marginTop: '24px', position: 'sticky', bottom: 0, background: 'white', paddingTop: '12px' }}>
+                <button type="button" className="btn-secondary" onClick={onClose} disabled={isSubmitting} style={{ flex: 1 }}>
+                  取消
+                </button>
+                <button type="submit" className="btn-primary" disabled={isSubmitting || !!dateError || (isElectricity && (!selectedFactorId || !usage))} style={{ flex: 1 }}>
+                  {isSubmitting ? '儲存中...' : '確認儲存'}
+                </button>
+              </div>
+            </form>
+          </>
+        )}
       </div>
     </div>
   );

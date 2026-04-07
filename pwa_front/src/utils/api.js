@@ -21,6 +21,18 @@ export const apiClient = axios.create({
   }
 });
 
+// Add a response interceptor to handle unauthorized access globally
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Dispatch a custom event so the App component can react
+      window.dispatchEvent(new CustomEvent('unauthorized'));
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Helper to set the auth token for all future requests automatically
 export const setAuthHeaders = (token) => {
   if (token) {

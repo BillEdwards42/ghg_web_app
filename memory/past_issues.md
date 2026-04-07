@@ -31,3 +31,18 @@
   - Properly initialized `matchResult` state in the `useOCR` hook.
   - Updated `index.html` with the modern `<meta name="mobile-web-app-capable" content="yes">` tag to resolve deprecation warnings.
 - **Outcome**: The application now loads successfully locally and in subfolder environments with the Unified Year logic fully functional.
+
+## 6. Login Redirect Loop on Mobile
+- **Problem**: After logging in on a mobile device, the Home page would show briefly and then redirect back to Login.
+- **Root Cause**: A race condition in `App.jsx`. The startup `useEffect` called `/checkUserToken` immediately after `handleLogin` updated the `authToken` state, sometimes before headers were synchronized or due to sensitive session handling on the backend.
+- **Solution**: Implemented a `window._appInitialized` flag to ensure `/checkUserToken` only runs on the very first app mount (cold start) and is skipped during the transition from the Login component to the Home component.
+
+## 7. Transportation Dropdown Failure (Registry Blocker)
+- **Problem**: "出發站" and "抵達站" fields for specialized Category 3 methods (HSR, Train, MRT, Air) remained as text inputs instead of dropdowns.
+- **Root Cause**: 
+    1.  **Merge Priority**: The `useEquipmentForm.js` logic prioritized the Tier 2 fallback (`BUSINESS_TRIP`) because `useConfFirst: true` was missing from the specialized Tier 3 helpers.
+    2.  **Key Normalization**: Mismatch between API keys (e.g., `HIGH_SPEED_RAIL`) and registry keys (e.g., `high speed rail`) due to underscores.
+- **Solution**: 
+    1.  Added `useConfFirst: true` to `bisTripConf` and `upstreamNdownstreamConf` in `formConf.js`.
+    2.  Updated normalization in `useEquipmentForm.js` to replace underscores with spaces.
+

@@ -12,7 +12,7 @@ export const EMISSION_SOURCE = {
   UPSTREAM_TRANSPORTATION: 'upstream transportation and distribution',
   DOWNSTREAM_TRANSPORTATION: 'downstream transportation and distribution',
   EMPLOYEE_COMMUTING: 'employee commuting',
-  BUSSINESS_TRIP: 'business travel',
+  BUSINESS_TRIP: 'business travel',
   // ----- Category 4 -----
   PURCHASED_PRODUCT_N_SERVICE: 'products and services purchased',
   FUEL_N_ENERGY_ACTIVITY: 'fuel and energy related activities (not covered in scope 1 & scope 2)',
@@ -37,11 +37,11 @@ export const TRANSPORTATION_TYPE = {
   HIGH_SPEED_RAIL: 'high speed rail',
   TRAIN: 'train',
   MRT: 'mrt',
-  BUS: 'the bus',
+  BUS: 'bus',
   LONG_DISTANCE_BUS: 'passenger transport',
   TAXI: 'taxi',
   CAR: 'car',
-  MOTORCYCLE: 'locomotive',
+  MOTORCYCLE: 'motorcycle',
   SHIP: 'sea transportation',
   LAND_TRANSPORTATION: 'land transportation',
   AIR_TRANSPORTATION: 'air transportation'

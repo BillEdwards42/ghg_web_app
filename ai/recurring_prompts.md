@@ -1,0 +1,2 @@
+1. project understanding:
+Understand the project in depth. The is a pwa that I am gearing towards production. The pwa_front is the main dir that we will be working on, the poc backend is in nodejs_back which we are trying to migrate out of and into the production api. Have a deep and comprehensive look into the project and gain a solid understanding. I will have tasks later for you.

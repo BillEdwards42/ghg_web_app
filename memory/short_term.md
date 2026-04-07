@@ -5,8 +5,8 @@
 ### **Core Architecture: The "Registry Pattern"**
 The manual entry system utilizes a **Metadata-Driven Configuration Engine**. 
 - The frontend retrieves a 3-tier category structure from the API.
-- `useEquipmentForm.js` extracts normalized string keys (using `toLowerCase().trim()`) from the Tier 2 (`emissionTypeKey`) and Tier 3 (`equipmentTypeKey`) selections to look up the exact form schema in `formConf.js`.
-- This architecture allows a single React component (`ManualEntryPopup.jsx`) to dynamically render over 50 distinct data entry workflows without hardcoding individual forms.
+- `useEquipmentForm.js` now prioritizes English string keys (e.g., `equipmentTypeKey`) over numeric IDs to look up schemas in `formConf.js`.
+- **English Key Bridge:** Updated `ManualCategorySelection.jsx` to preserve English keys from the production API response, ensuring specialized forms (like Business Trip) are correctly identified.
 
 ### **Employee Commuting (Grid UI Implementation)**
 - **Selection Bypass:** Modified `ManualCategorySelection.jsx` to recognize "員工通勤" at Tier 2 and trigger `onComplete` immediately, bypassing the unnecessary Tier 3 equipment screen.
@@ -14,8 +14,9 @@ The manual entry system utilizes a **Metadata-Driven Configuration Engine**.
 - **Data Model:** Rows default to `0` for "員工人次" (Number of People) and "平均通勤距離" (Distance). 
 - **Payload Serialization:** The `saveFormatting` for this category stringifies a cleaned array `employeeCommutingDataDetails` containing only `{ commutingModeId, emissionSourceId, numberOfPeople, distance, remark }`.
 
-### **Business Trip (Dependent API Orchestration)**
-- **Station Fetching:** Independent station APIs (`fetchTrainStations`, `fetchHsrStations`, `fetchAirports`) are called immediately upon category selection to populate "出發站" and "抵達站" dropdowns.
+### **Business Trip (Station & Type Orchestration)**
+- **Spelling Harmonization:** Removed extra 'S' from `BUSSINESS_TRIP` constants; now standardized as `BUSINESS_TRIP` across `EmissionSrc.js`, `formConf.js`, and components.
+- **Robust Mapping:** Added API aliases (e.g., `'hsr'`, `'railway'`) and Chinese fallbacks to `formConf.js` to ensure the correct schema is resolved even when the API returns localized names or inconsistent keys.
 - **Date-Dependent Factors:** The "種類選擇" (Type) dropdown remains disabled until a `useDate` is selected, which then triggers `fetchBisTripType`.
 - **Unit Splitting Logic:** Implemented `updateWeightAndDistanceUnit` to parse composite units (e.g., "Pkm") into `unit1` (Passenger) and `unit2` (Km), dynamically toggling the visibility of the "活動數據 2" field.
 
@@ -28,16 +29,19 @@ The manual entry system utilizes a **Metadata-Driven Configuration Engine**.
 
 ## 2. Current Migration Status & Technical Gaps
 
-### **✅ Completed: Categories 1, 2 & Primary Category 3**
-- **Category 1 (Equipment-Centric):** Stationary/Mobile Combustion, Processes, Fugitive. (Status: Verified)
-- **Category 2 (Factor-Centric):** Electricity & Energy. (Status: Verified)
-- **Category 3 (Employee Commuting & Train/HSR):** Grid UI and Station logic implemented and verified for payload accuracy.
+### **✅ Fixed: Transportation Dropdown Failure**
+Resolved the issue where "出發站" and "抵達站" rendered as text inputs instead of dropdowns for specialized transportation (HSR, Train, MRT, Air).
+- **Merge Logic Correction:** Added `useConfFirst: true` to `bisTripConf` and `upstreamNdownstreamConf` in `formConf.js`. This ensures that specialized Tier 3 configurations are prioritized over generic Tier 2 fallbacks in `useEquipmentForm.js`.
+- **Key Normalization:** Updated `useEquipmentForm.js` to replace underscores with spaces during key normalization (e.g., `HIGH_SPEED_RAIL` -> `high speed rail`), ensuring reliable configuration lookups.
+- **Immediate Population:** Verified that station APIs are correctly triggered upon popup mount via the "Independent Option Fetcher" in `ManualEntryPopup.jsx`.
+
+---
+
+## 2. Current Migration Status & Technical Gaps
 
 ### **⏳ Pending / Unverified: Category 3 (Other Transportation)**
-- **Bus/Taxi/Car/Motorcycle:** Currently use `bisTripConf` with `input` for stations. Need to verify if these require specific "Stations" or if they remain free-text.
+- **Bus/Taxi/Car/Motorcycle:** Currently use `bisTripConf` with `input` for stations. Need to verify if these remain free-text or require specific lists.
 - **Upstream/Downstream Transportation (Ship, Land, Air):** Use `transportationMidForm`. Need to verify unit splitting and departure/arrival station logic.
-- **Category 3 Sub-Categories:** "客戶與訪客交通之排放" and other sub-categories need verification that they map correctly to the existing `bisTripConf` or `transportationMidForm`.
 
 ### **⏳ Pending / Unverified: Categories 4 & 5 (Purchased Goods, Waste, Processing)**
-- **Metric Initialization:** These rely on `getDefaultUnit` via `initSetup`. Need to verify that `emissionSourceId` is correctly mapped from the Tier 3 selection and that the `FormData` doesn't contain a redundant `equipmentTypeId` which might crash the backend.
-- **Field Localization:** Verify Traditional Chinese labels for specialized fields like "Firm" (廠商) or "Service Provider" (服務提供商).
+- **Metric Initialization:** These rely on `getDefaultUnit` via `initSetup`. Need to verify mapping of `emissionSourceId` from Tier 3 selections.

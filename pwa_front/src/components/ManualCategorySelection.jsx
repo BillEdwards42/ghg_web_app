@@ -61,19 +61,23 @@ function ManualCategorySelection({ onBack, onComplete, activeYear, setYear }) {
     if (path.length === 1) {
       const selectedCategory = fullTree.find(c => c.category === path[0].name);
       return (selectedCategory?.emissionType || []).map(et => ({
-        id: et.emissionTypeKey, // Using Key as ID
-        name: et.emissionTypeName
+        id: et.emissionTypeKey, // Use English Key as ID for lookup
+        name: et.emissionTypeName,
+        emissionTypeKey: et.emissionTypeKey
       }));
     }
 
     // Layer 3: Equipment Types
     if (path.length === 2) {
       const selectedCategory = fullTree.find(c => c.category === path[0].name);
-      const selectedEmissionType = selectedCategory?.emissionType.find(et => et.emissionTypeName === path[1].name);
+      // Support lookup by name or key for reliability
+      const selectedEmissionType = selectedCategory?.emissionType.find(
+        et => et.emissionTypeName === path[1].name || et.emissionTypeKey === path[1].id
+      );
       return (selectedEmissionType?.equipmentType || []).map(eq => ({
-        id: eq.equipmentTypeId,
+        id: eq.equipmentTypeId, // Numeric ID for API submission
         name: eq.equipmentTypeName,
-        // Carry over other useful props for ManualEntryPopup if needed
+        equipmentTypeKey: eq.equipmentTypeKey, // English Key for Form Registry lookup
         canCreate: eq.canCreate,
         layers: eq.layers
       }));

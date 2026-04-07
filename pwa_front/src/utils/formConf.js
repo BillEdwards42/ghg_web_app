@@ -20,10 +20,10 @@ const {
   STATIONARY_COMBUSTION, MOBILE_COMBUSTION, INDUSTRIAL_PROCESS, FUGITIVE_EMISSION, FUGITIVE_EMISSION_SEPTIC_TANK,
   IMPORTED_ELECTRICITY, IMPORTED_ENERGY,
   UPSTREAM_TRANSPORTATION, DOWNSTREAM_TRANSPORTATION, EMPLOYEE_COMMUTING,
+  BUSINESS_TRIP,
   PURCHASED_PRODUCT_N_SERVICE, FUEL_N_ENERGY_ACTIVITY, WASTE_DISPOSAL_SERVICE, WASTE_DISPOSAL_TRANSPORTATION, UPSTREAM_EMISSION,
   PROCESSING_PRODUCT_N_SERVICE, USE_PRODUCT_N_SERVICE, END_TREATMENT_PRODUCT_N_SERVICE
-} = EMISSION_SOURCE;
-
+  } = EMISSION_SOURCE;
 const { AIRPLANE, HIGH_SPEED_RAIL, TRAIN, MRT, BUS, LONG_DISTANCE_BUS, TAXI, CAR, MOTORCYCLE, SHIP, LAND_TRANSPORTATION, AIR_TRANSPORTATION } = TRANSPORTATION_TYPE;
 const { SEPTIC_TANK, FIRE_EXTINGUISHER, REFRIGERANT } = FUGITIVE_TYPE;
 
@@ -305,12 +305,18 @@ const upstreamNdownstreamConf = (selectorApi, apis, stationApi, stationApiFormat
   return {
     middleForm: midForm,
     bottomForm: bottomForm.slice(2, 5),
+    useConfFirst: true,
     apis
   };
 };
 
 const bisTripConf = (stationApi, stationApiFormat = { idKey: 'id', nameKey: 'name' }, extraFields = []) => {
-  const stationField = stationApi ? { type: 'select', api: () => stationApi().then(res => formatRes(res, stationApiFormat.idKey, stationApiFormat.nameKey)) } : { type: 'input' };
+  const isSelect = typeof stationApi === 'function';
+  const stationField = isSelect ? { 
+    type: 'select', 
+    api: () => stationApi().then(res => formatRes(res, stationApiFormat.idKey, stationApiFormat.nameKey)) 
+  } : { type: 'input' };
+
   return {
     middleForm: [
       {
@@ -337,6 +343,7 @@ const bisTripConf = (stationApi, stationApiFormat = { idKey: 'id', nameKey: 'nam
       { _key: 'custodian', type: 'hidden' },
       { _key: 'file', type: 'hidden' }
     ],
+    useConfFirst: true,
     apis: { add: addBusinessTrip }
   };
 };
@@ -384,7 +391,22 @@ const category3 = {
   [LONG_DISTANCE_BUS]: bisTripConf(),
   [TAXI]: bisTripConf(),
   [CAR]: bisTripConf(),
-  [MOTORCYCLE]: bisTripConf()
+  [MOTORCYCLE]: bisTripConf(),
+
+  // API Alias & Chinese Fallbacks for Robustness
+  'airplane': bisTripConf(fetchAirports, { idKey: 'code', nameKey: 'code' }, [{ _key: 'airline', type: 'input' }]),
+  'hsr': bisTripConf(fetchHsrStations),
+  'high speed rail': bisTripConf(fetchHsrStations),
+  'railway': bisTripConf(fetchTrainStations),
+  'train': bisTripConf(fetchTrainStations),
+  'mrt': bisTripConf(fetchMrtStations),
+  '飛機': bisTripConf(fetchAirports, { idKey: 'code', nameKey: 'code' }, [{ _key: 'airline', type: 'input' }]),
+  '高鐵': bisTripConf(fetchHsrStations),
+  '火車': bisTripConf(fetchTrainStations),
+  '捷運': bisTripConf(fetchMrtStations),
+
+  // Ensure the Tier 2 key itself resolves to a base Business Trip configuration
+  [BUSINESS_TRIP]: bisTripConf()
 };
 
 const category4 = {

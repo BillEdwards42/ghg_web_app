@@ -33,10 +33,30 @@ function App() {
   const isLoggedIn = !!authToken;
   const navigate = useNavigate();
 
-  // Initialize Auth Headers when token changes (though handled in Login/Startup, this is safer)
+  // Initialize Auth Headers and listen for global logout events
   useEffect(() => {
     setAuthHeaders(authToken);
-  }, [authToken]);
+    
+    const handleUnauthorized = () => {
+      console.warn('Unauthorized access detected. Logging out.');
+      handleLogout();
+    };
+
+    window.addEventListener('unauthorized', handleUnauthorized);
+    
+    // Startup Validation: Verify existing token on app launch
+    // Skip this if we just logged in (handled by handleLogin)
+    const isInitialMount = !window._appInitialized;
+    if (authToken && isInitialMount) {
+      window._appInitialized = true;
+      apiClient.get('/checkUserToken').catch((err) => {
+        // If 401, the interceptor will trigger the 'unauthorized' event
+        console.error('Session validation failed:', err);
+      });
+    }
+
+    return () => window.removeEventListener('unauthorized', handleUnauthorized);
+  }, [authToken]); // dependency on authToken ensures headers/listeners are fresh
 
   //Immediately interigates the browser: "Is this running full screen from home screen?"
   const [forceSkipInstall, setForceSkipInstall] = useState(false);
