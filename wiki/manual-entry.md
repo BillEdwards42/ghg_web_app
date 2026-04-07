@@ -6,8 +6,20 @@ This system is implemented in [[pwa_front/src/components/ManualEntryPopup.jsx]] 
 
 ### Architecture: The Registry Pattern
 - **Metadata Configuration**: [[pwa_front/src/utils/formConf.js]] acts as a central registry. It maps category IDs or English keys (like `MOBILE_COMBUSTION` or `BUSINESS_TRIP`) to specific form schemas.
-- **Dynamic Schema Resolution**: The `useEquipmentForm` hook resolves the correct configuration object, which includes API endpoints for fetching options and the submission logic.
+- **Dynamic Schema Resolution**: The `useEquipmentForm` hook resolves the correct configuration object, including API endpoints for fetching options and submission logic. Priority is given to Tier 3 (Equipment) configurations over Tier 2 (Category) fallbacks via the `useConfFirst` flag.
+- **Localization**: All visible field labels are mapped to traditional Chinese (e.g., `labelName: '出發站'`) to ensure a localized user experience across all categories.
 - **Field Dependency**: Many fields (especially in Category 2) have a `dependency: 'useDate'`. When the date is selected, a `useEffect` in `ManualEntryPopup` triggers a fetch for relevant emission factors or equipment available on that specific date.
+
+### Technical & Hidden Fields
+For system compatibility and backend requirements, several technical fields are managed implicitly:
+- **`source` & `custodian`**: These are defined as `type: 'hidden'` in the configuration. They are not visible to the user but are included in the `FormData` payload as empty strings or system-defined values.
+- **`file`**: This field is also `type: 'hidden'` during manual entry. It does not provide a file picker in the manual popup. Manual entries are currently designed for data-only recording; file attachments are handled automatically by the [[ocr-scan]] workflow, where the scanned image is attached to the resulting record.
+
+### Category 3 (Transportation) Implementation
+Category 3 is fully implemented with specialized logic for different transportation modes:
+- **Station-Based (HSR, Train, MRT, Airplane)**: These use searchable dropdowns populated by mode-specific APIs (e.g., `fetchHsrStations`).
+- **Free-Text (Bus, Taxi, Car, etc.)**: These use standard text inputs for departure and destination stations.
+- **Employee Commuting**: A specialized grid-based UI (`tableInput`) for recording multiple commuting modes in a single entry.
 
 ### Technical Details
 - **Form Data Serialization**: Most forms use `defFormatSave` from `formConf.js`, which converts the state into a `FormData` object, handling both text fields and file uploads.

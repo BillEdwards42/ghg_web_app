@@ -273,7 +273,7 @@ const category2 = {
 const transportationMidForm = (selectorApi) => [
   {
     _key: 'emissionSourceId',
-    labelName: 'shippingMethod',
+    labelName: '運輸方式',
     type: 'select',
     api: (params) => selectorApi(...params).then(res => formatRes(res, 'emissionSourceId', 'emissionFactorName')),
     handleSelectorChange: props => {
@@ -282,14 +282,14 @@ const transportationMidForm = (selectorApi) => [
     },
     dependency: 'useDate'
   },
-  { _key: 'departure', type: 'input' },
-  { _key: 'destination', type: 'input' },
-  { _key: 'usage1', type: 'inputNumber', required: true },
-  { _key: 'unit1', labelName: 'unit', type: 'input', disabled: true },
-  { _key: 'usage2', type: 'inputNumber', required: false, hideKey: 'hideUsage2' },
-  { _key: 'unit2', labelName: 'unit', type: 'input', disabled: true, hideKey: 'hideUsage2' },
-  { _key: 'transportContent', type: 'input', required: false },
-  { _key: 'serviceProvider', type: 'input', required: false }
+  { _key: 'departure', labelName: '出發站', type: 'input' },
+  { _key: 'destination', labelName: '抵達站', type: 'input' },
+  { _key: 'usage1', labelName: '活動數據 1', type: 'inputNumber', required: true },
+  { _key: 'unit1', labelName: '單位', type: 'input', disabled: true },
+  { _key: 'usage2', labelName: '活動數據 2', type: 'inputNumber', required: false, hideKey: 'hideUsage2' },
+  { _key: 'unit2', labelName: '單位', type: 'input', disabled: true, hideKey: 'hideUsage2' },
+  { _key: 'transportContent', labelName: '運輸內容', type: 'input', required: false },
+  { _key: 'serviceProvider', labelName: '服務供應商', type: 'input', required: false }
 ];
 
 const upstreamNdownstreamConf = (selectorApi, apis, stationApi, stationApiFormat = { idKey: 'id', nameKey: 'name' }) => {
@@ -297,10 +297,11 @@ const upstreamNdownstreamConf = (selectorApi, apis, stationApi, stationApiFormat
   if (stationApi) {
     const stationField = { 
       type: 'select', 
+      labelName: '站點選擇',
       api: () => stationApi().then(res => formatRes(res, stationApiFormat.idKey, stationApiFormat.nameKey)) 
     };
-    midForm[1] = { ...midForm[1], ...stationField };
-    midForm[2] = { ...midForm[2], ...stationField };
+    midForm[1] = { ...midForm[1], ...stationField, labelName: '出發站' };
+    midForm[2] = { ...midForm[2], ...stationField, labelName: '抵達站' };
   }
   return {
     middleForm: midForm,
@@ -383,7 +384,7 @@ const category3 = {
       return formData;
     }
   },
-  [AIRPLANE]: bisTripConf(fetchAirports, { idKey: 'code', nameKey: 'code' }, [{ _key: 'airline', type: 'input' }]),
+  [AIRPLANE]: bisTripConf(fetchAirports, { idKey: 'code', nameKey: 'code' }, [{ _key: 'airline', labelName: '航空公司', type: 'input' }]),
   [HIGH_SPEED_RAIL]: bisTripConf(fetchHsrStations),
   [TRAIN]: bisTripConf(fetchTrainStations),
   [MRT]: bisTripConf(fetchMrtStations),
@@ -394,7 +395,7 @@ const category3 = {
   [MOTORCYCLE]: bisTripConf(),
 
   // API Alias & Chinese Fallbacks for Robustness
-  'airplane': bisTripConf(fetchAirports, { idKey: 'code', nameKey: 'code' }, [{ _key: 'airline', type: 'input' }]),
+  'airplane': bisTripConf(fetchAirports, { idKey: 'code', nameKey: 'code' }, [{ _key: 'airline', labelName: '航空公司', type: 'input' }]),
   'hsr': bisTripConf(fetchHsrStations),
   'high speed rail': bisTripConf(fetchHsrStations),
   'railway': bisTripConf(fetchTrainStations),
@@ -412,9 +413,9 @@ const category3 = {
 const category4 = {
   [PURCHASED_PRODUCT_N_SERVICE]: {
     middleForm: [
-      { _key: 'usage', labelName: 'quantity', type: 'inputNumber', required: true },
-      { _key: 'unit', type: 'input', disabled: true },
-      { _key: 'serviceProvider', type: 'input' }
+      { _key: 'usage', labelName: '數量', type: 'inputNumber', required: true },
+      { _key: 'unit', labelName: '單位', type: 'input', disabled: true },
+      { _key: 'serviceProvider', labelName: '服務供應商', type: 'input' }
     ],
     bottomForm: bottomForm.slice(2, 5),
     initSetup: getDefaultUnit,
@@ -438,18 +439,18 @@ const category4 = {
         },
         dependency: 'useDate'
       },
-      { _key: 'usage', labelName: 'energyConsumption', type: 'inputNumber', required: true },
-      { _key: 'unit', type: 'input', disabled: true },
-      { _key: 'serviceProvider', type: 'input' }
+      { _key: 'usage', labelName: '能源消耗量', type: 'inputNumber', required: true },
+      { _key: 'unit', labelName: '單位', type: 'input', disabled: true },
+      { _key: 'serviceProvider', labelName: '服務供應商', type: 'input' }
     ],
     bottomForm: bottomForm.slice(2, 5),
     apis: { add: addFuelAndEnergy }
   },
   [UPSTREAM_EMISSION]: {
     middleForm: [
-      { _key: 'usage', labelName: 'quantity', type: 'inputNumber', required: true },
-      { _key: 'unit', type: 'input', disabled: true },
-      { _key: 'firm', type: 'input' }
+      { _key: 'usage', labelName: '數量', type: 'inputNumber', required: true },
+      { _key: 'unit', labelName: '單位', type: 'input', disabled: true },
+      { _key: 'firm', labelName: '廠商', type: 'input' }
     ],
     bottomForm: bottomForm.slice(2, 5),
     initSetup: getDefaultUnit,
@@ -459,7 +460,7 @@ const category4 = {
     middleForm: [
       {
         _key: 'emissionSourceId',
-        labelName: 'processingMethod',
+        labelName: '處理方式',
         type: 'select',
         api: (params) => fetchWasteEmissionSrc(...params).then(res => formatRes(res, 'emissionSourceId', 'emissionFactorName')),
         handleSelectorChange: props => {
@@ -468,9 +469,9 @@ const category4 = {
         },
         dependency: 'useDate'
       },
-      { _key: 'usage', labelName: 'wasteWeight', type: 'inputNumber', required: true },
-      { _key: 'unit', type: 'input', disabled: true },
-      { _key: 'serviceProvider', type: 'input' }
+      { _key: 'usage', labelName: '廢棄物重量', type: 'inputNumber', required: true },
+      { _key: 'unit', labelName: '單位', type: 'input', disabled: true },
+      { _key: 'serviceProvider', labelName: '服務供應商', type: 'input' }
     ],
     bottomForm: bottomForm.slice(2, 5),
     apis: { add: addWasteDisposalService }
@@ -485,9 +486,9 @@ const category4 = {
 const category5 = {
   [PROCESSING_PRODUCT_N_SERVICE]: {
     middleForm: [
-      { _key: 'usage', labelName: 'processQuantity', type: 'inputNumber', required: true },
-      { _key: 'unit', type: 'input', disabled: true },
-      { _key: 'firm', labelName: 'processor', type: 'input' }
+      { _key: 'usage', labelName: '處理數量', type: 'inputNumber', required: true },
+      { _key: 'unit', labelName: '單位', type: 'input', disabled: true },
+      { _key: 'firm', labelName: '處理商', type: 'input' }
     ],
     initSetup: getDefaultUnit,
     bottomForm: bottomForm.slice(2, 5),
@@ -495,9 +496,9 @@ const category5 = {
   },
   [USE_PRODUCT_N_SERVICE]: {
     middleForm: [
-      { _key: 'usage', labelName: 'usageAmount', type: 'inputNumber', required: true },
-      { _key: 'unit', type: 'input', disabled: true },
-      { _key: 'firm', labelName: 'salesBase', type: 'input' }
+      { _key: 'usage', labelName: '使用量', type: 'inputNumber', required: true },
+      { _key: 'unit', labelName: '單位', type: 'input', disabled: true },
+      { _key: 'firm', labelName: '銷售據點', type: 'input' }
     ],
     initSetup: getDefaultUnit,
     bottomForm: bottomForm.slice(2, 5),
@@ -505,9 +506,9 @@ const category5 = {
   },
   [END_TREATMENT_PRODUCT_N_SERVICE]: {
     middleForm: [
-      { _key: 'usage', labelName: 'finalProcessingQuantity', type: 'inputNumber', required: true },
-      { _key: 'unit', type: 'input', disabled: true },
-      { _key: 'firm', labelName: 'finalProcessingManufacturer', type: 'input' }
+      { _key: 'usage', labelName: '最終處理數量', type: 'inputNumber', required: true },
+      { _key: 'unit', labelName: '單位', type: 'input', disabled: true },
+      { _key: 'firm', labelName: '最終處理廠商', type: 'input' }
     ],
     initSetup: getDefaultUnit,
     bottomForm: bottomForm.slice(2, 5),
