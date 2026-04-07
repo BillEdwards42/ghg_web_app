@@ -25,9 +25,10 @@ export const apiClient = axios.create({
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    const isLogoutRequest = error.config?.url?.includes('/session') && error.config?.method === 'delete';
-    if (error.response?.status === 401 && !isLogoutRequest) {
-      // Dispatch a custom event so the App component can react
+    // If any request returns 401, the session is invalid.
+    // We ignore 401s on the session endpoint itself to avoid logout loops.
+    const isSessionRequest = error.config?.url?.includes('/session');
+    if (error.response?.status === 401 && !isSessionRequest) {
       window.dispatchEvent(new CustomEvent('unauthorized'));
     }
     return Promise.reject(error);

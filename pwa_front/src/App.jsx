@@ -10,7 +10,6 @@ import ManualEntryPopup from './components/ManualEntryPopup';
 import { setAuthHeaders, apiClient } from './utils/api';
 
 function App() {
-  const isFirstLoad = React.useRef(true);
   // Initial value?
   const [authToken, setAuthToken] = useState(() => {
     const savedToken = localStorage.getItem('authToken');
@@ -34,6 +33,25 @@ function App() {
   const isLoggedIn = !!authToken;
   const navigate = useNavigate();
 
+  // Define handleLogout as a memoized callback to prevent recursion/stale closures
+  const handleLogout = React.useCallback(async () => {
+    try {
+      await apiClient.delete('/session');
+    } catch (err) {
+      console.warn('Backend logout failed', err);
+    } finally {
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('rootLegalEntities');
+      localStorage.removeItem('selected_corp');
+      localStorage.removeItem('selected_loc');
+      sessionStorage.clear();
+      setAuthHeaders(null);
+      setAuthToken(null);
+      setReportingYear(null);
+      navigate('/'); // Go back to root (Login)
+    }
+  }, [navigate]);
+
   // Initialize Auth Headers and listen for global logout events
   useEffect(() => {
     setAuthHeaders(authToken);
@@ -45,17 +63,11 @@ function App() {
 
     window.addEventListener('unauthorized', handleUnauthorized);
     
-    // Startup Validation: Verify existing token on app launch ONLY on cold start
-    if (authToken && isFirstLoad.current) {
-      isFirstLoad.current = false;
-      apiClient.get('/checkUserToken').catch((err) => {
-        // If 401, the interceptor will trigger the 'unauthorized' event
-        console.error('Session validation failed:', err);
-      });
-    }
+    // NO STARTUP CHECK HERE: We rely on the interceptor to catch actual 401s 
+    // from any functional request (e.g., fetching categories or entities).
 
     return () => window.removeEventListener('unauthorized', handleUnauthorized);
-  }, [authToken]); // dependency on authToken ensures headers/listeners are fresh
+  }, [authToken, handleLogout]); 
 
   //Immediately interigates the browser: "Is this running full screen from home screen?"
   const [forceSkipInstall, setForceSkipInstall] = useState(false);
@@ -119,25 +131,6 @@ function App() {
     localStorage.setItem('authToken', token);
     localStorage.setItem('rootLegalEntities', JSON.stringify(rootEntities));
     setAuthToken(token);
-  };
-
-  //
-  const handleLogout = async () => {
-    try {
-      // Optional: Inform backend about logout
-      await apiClient.delete('/session');
-    } catch (err) {
-      console.warn('Backend logout failed', err);
-    } finally {
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('rootLegalEntities');
-      localStorage.removeItem('selected_corp');
-      localStorage.removeItem('selected_loc');
-      sessionStorage.clear();
-      setAuthHeaders(null);
-      setAuthToken(null);
-      setReportingYear(null);
-    }
   };
 
   const clearOcrState = () => {

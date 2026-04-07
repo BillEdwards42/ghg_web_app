@@ -39,7 +39,8 @@
     2.  **Race Condition**: The startup `useEffect` called `/checkUserToken` on every `authToken` state change. If the state updated before the headers were fully synchronized or before the component finished a transition, it could trigger a false 401.
 - **Solution**: 
     1.  Updated `api.js` interceptor to ignore 401 errors from the `DELETE /session` endpoint.
-    2.  Implemented a `useRef(true)` based `isFirstLoad` flag in `App.jsx` to ensure `/checkUserToken` only runs on the initial application mount (cold start) and never during the login-to-home transition.
+    2.  Implemented a `useRef(true)` based `isFirstLoad` flag in `App.jsx` to ensure `/checkUserToken` only runs on the initial application mount (cold start).
+    3.  **Refined**: Removed the startup check entirely in favor of a pure interceptor-based approach to eliminate race conditions, and fixed a duplicate `handleLogout` declaration syntax error.
 
 ## 7. Transportation Dropdown Failure (Registry Blocker)
 - **Problem**: "出發站" and "抵達站" fields for specialized Category 3 methods (HSR, Train, MRT, Air) remained as text inputs instead of dropdowns.
