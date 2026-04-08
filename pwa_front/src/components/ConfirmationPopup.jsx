@@ -181,12 +181,6 @@ function ConfirmationPopup({ data, file, category, onClose, onSave, activeYear }
       } else {
         formData.append('data', JSON.stringify(entryData));
         formData.append('category', category);
-        
-        if (window.location.hostname.includes('github.io')) {
-          setShowSuccess(true);
-          setIsSubmitting(false);
-          return;
-        }
 
         const response = await apiClient.post('/rick_store', formData, {
           headers: { 'Content-Type': 'multipart/form-data' }

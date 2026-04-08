@@ -88,22 +88,6 @@ export const useOCR = () => {
     setError(null);
 
     try {
-      // GitHub Pages POC Bypass
-      if (window.location.hostname.includes('github.io')) {
-        alert("⚠️ [POC Demo Mode] 已注入模擬辨識資料！");
-        
-        const schema = selectedCategory === '電費單' ? { type: 'tw_power_bill', fields: [{key: 'regular_degree', label: '用電度數', type: 'number'}] } 
-                     : selectedCategory === '水費單' ? { type: 'tw_water_bill', fields: [{key: 'carbon_emission', label: '碳排放量', type: 'number'}] } 
-                     : { type: 'tw_thsrc', fields: [{key: 'date', label: '日期', type: 'text'}, {key: 'from_name', label: '出發站', type: 'text'}] };
-        
-        const dummyData = selectedCategory === '電費單' ? { type: 'tw_power_bill', regular_degree: 543 } 
-                        : selectedCategory === '水費單' ? { type: 'tw_water_bill', carbon_emission: 12.5 } 
-                        : { type: 'tw_thsrc', date: '2024-03-24', from_name: '台北' };
-        
-        setMatchResult({ data: dummyData, schema });
-        setLoading(false);
-        return;
-      }
 
       const file = await compressImage(rawFile);
       const formData = new FormData();
