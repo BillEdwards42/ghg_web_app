@@ -1,12 +1,26 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useEquipmentForm } from '../hooks/useEquipmentForm';
 import { fetchEmployeeCommutingConf, checkActivityClose } from '../utils/api';
 
-function ManualEntryPopup({ pathData, year, onClose, onSave }) {
+function ManualEntryPopup({ pathData, year, onClose, onSave, initialData }) {
   const { loading: schemaLoading, error: schemaError, resolveSchema } = useEquipmentForm();
-  
+
   const [schema, setSchema] = useState(null);
-  const [formData, setFormData] = useState({});
+  const [formData, setFormData] = useState(() => {
+    const initialState = {
+      useDate: initialData?.date ? initialData.date.replace(/[\/\.]/g, '-') : '',
+      file: initialData?.file || '',
+      source: '',
+      custodian: ''
+    };
+    // For transportation OCR tickets
+    if (initialData) {
+      initialState.usage1 = initialData.usage1 || initialData.passengerCount || ''; 
+      initialState.departure = ''; // Placeholder for ID matching
+      initialState.destination = ''; // Placeholder for ID matching
+    }
+    return initialState;
+  });
   const [options, setOptions] = useState({});
   const [loadingFields, setLoadingFields] = useState({});
   const [errors, setErrors] = useState({});
@@ -14,33 +28,30 @@ function ManualEntryPopup({ pathData, year, onClose, onSave }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
+  const hasInitialized = useRef(false);
+
   const facilityId = useMemo(() => {
     const loc = JSON.parse(localStorage.getItem('selected_loc') || '{}');
     return loc.id;
   }, []);
 
-  // 1. Initialize Schema and Form Defaults
+  // 1. Initialize Schema and One-time Form Setup
   useEffect(() => {
     const resolved = resolveSchema(pathData);
     if (resolved) {
       setSchema(resolved);
-      
-      const initialData = {};
-      [...resolved.topForm, ...resolved.middleForm, ...resolved.bottomForm].forEach(field => {
-        if (field._key === 'useDate') initialData[field._key] = '';
-        if (field._key === 'useYear') initialData[field._key] = year;
-        if (field.type === 'hidden') initialData[field._key] = '';
-      });
-      setFormData(initialData);
 
-      if (resolved.initSetup) {
-        resolved.initSetup({ 
-          equipmentTypeId: pathData[2].id, 
-          setFormData 
-        });
+      if (!hasInitialized.current) {
+        if (resolved.initSetup) {
+          resolved.initSetup({
+            equipmentTypeId: pathData[2].id,
+            setFormData
+          });
+        }
+        hasInitialized.current = true;
       }
     }
-  }, [pathData, resolveSchema, year]);
+  }, [pathData, resolveSchema]);
 
   // 2. Dependency Watcher
   const useDate = formData.useDate;
@@ -56,10 +67,33 @@ function ManualEntryPopup({ pathData, year, onClose, onSave }) {
           const data = res.data || [];
           setOptions(prev => ({ ...prev, [field._key]: data }));
 
+          // OCR Pre-selection for emissionSourceId (e.g. 種類選擇)
+          if (initialData && field._key === 'emissionSourceId' && data.length > 0) {
+            const targetId = formData.emissionSourceId || data[0].id;
+            const selectedItem = data.find(opt => String(opt.id) === String(targetId));
+
+            if (selectedItem) {
+              setFormData(prev => ({ ...prev, emissionSourceId: selectedItem.id }));
+              if (field.handleSelectorChange) {
+                field.handleSelectorChange({
+                  item: selectedItem,
+                  formData: { ...formData, emissionSourceId: selectedItem.id },
+                  setFormData,
+                  setErrors,
+                  facilityId,
+                  emissionTypeId: pathData[1].id,
+                  setHideUsage2
+                });
+              }
+            }
+          }
+
           // Trigger checkerFunc if it depends on useDate (e.g. equipment date check)
           if (field.checkerFunc && formData[field._key]) {
-            const selectedItem = data.find(opt => opt.id === formData[field._key]);
-            field.checkerFunc({ item: selectedItem, formData, setErrors });
+            const selectedItem = data.find(opt => String(opt.id) === String(formData[field._key]));
+            if (selectedItem) {
+              field.checkerFunc({ item: selectedItem, formData, setErrors });
+            }
           }
         } catch (err) {
           console.error(`Failed to refresh options for ${field._key}:`, err);
@@ -70,7 +104,7 @@ function ManualEntryPopup({ pathData, year, onClose, onSave }) {
     });
   }, [useDate, schema, facilityId, pathData, year]);
 
-  // 3. Independent Option Fetcher
+  // 3. Independent Option Fetcher (e.g., Stations)
   useEffect(() => {
     if (!schema) return;
 
@@ -80,7 +114,20 @@ function ManualEntryPopup({ pathData, year, onClose, onSave }) {
           setLoadingFields(prev => ({ ...prev, [field._key]: true }));
           try {
             const res = await field.api();
-            setOptions(prev => ({ ...prev, [field._key]: res.data || [] }));
+            const data = res.data || [];
+            setOptions(prev => ({ ...prev, [field._key]: data }));
+
+            // OCR Pre-selection for stations
+            if (initialData) {
+              if (field._key === 'departure' && initialData.from_name) {
+                const match = data.find(opt => opt.name === initialData.from_name);
+                if (match) setFormData(prev => ({ ...prev, departure: match.id }));
+              }
+              if (field._key === 'destination' && initialData.to_name) {
+                const match = data.find(opt => opt.name === initialData.to_name);
+                if (match) setFormData(prev => ({ ...prev, destination: match.id }));
+              }
+            }
           } catch (err) {
             console.error(`Failed to fetch options for ${field._key}:`, err);
           } finally {
@@ -89,33 +136,24 @@ function ManualEntryPopup({ pathData, year, onClose, onSave }) {
         }
       }
     });
-  }, [schema]);
+  }, [schema, initialData]);
 
   const handleFieldChange = async (field, value) => {
     let newValue = value;
     let fieldError = null;
 
-    if (field._key === 'useDate' && newValue) {
-      try {
-        const res = await checkActivityClose(newValue, facilityId);
-        if (res.data?.result === false) {
-          alert('此期間已關帳，無法新增或編輯資料');
-          newValue = '';
-          fieldError = '此期間已關帳';
-        }
-      } catch (err) {
-        console.error('Check close failed', err);
-      }
-    }
-
     // Numeric Validation (Legacy Alignment)
     if (field.type === 'inputNumber') {
-      const num = parseFloat(value);
-      if (isNaN(num) || num < 0) {
-        newValue = 0;
-        fieldError = '數值不能為負';
+      if (value === '') {
+        newValue = '';
       } else {
-        newValue = num;
+        const num = parseFloat(value);
+        if (num < 0) {
+          newValue = value;
+          fieldError = '數值不能為負';
+        } else {
+          newValue = value; // Preserve exact string so decimals ("1.") aren't swallowed
+        }
       }
     }
 
@@ -125,10 +163,10 @@ function ManualEntryPopup({ pathData, year, onClose, onSave }) {
     }
 
     setErrors(prev => ({ ...prev, [field._key]: fieldError }));
-    
+
     const newFormData = { ...formData, [field._key]: newValue };
     setFormData(prev => ({ ...prev, [field._key]: newValue }));
-    
+
     if ((field.type === 'select' || field.type === 'selectWithDesc') && field.handleSelectorChange) {
       const selectedItem = (options[field._key] || []).find(opt => String(opt.id) === String(newValue));
       field.handleSelectorChange({
@@ -189,12 +227,25 @@ function ManualEntryPopup({ pathData, year, onClose, onSave }) {
 
     setIsSubmitting(true);
     try {
+      // 1. Double check Closed Period before final submission
+      if (formData.useDate) {
+        const checkRes = await checkActivityClose(formData.useDate, facilityId);
+        if (checkRes.data?.result === false) {
+          alert('此期間已關帳，無法新增或編輯資料');
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       const payload = schema.saveFormatting(formData, pathData[2].id);
-      
+
       if (payload instanceof FormData) {
         if (!payload.has('facilityId')) payload.append('facilityId', facilityId);
         if (!payload.has('year')) payload.append('year', year);
-        if (!payload.has(schema.fetchKey)) payload.append(schema.fetchKey, pathData[2].id);
+        // Only append the fetchKey (equipmentTypeId/categoryItemId) if defined in schema
+        if (schema.fetchKey && !payload.has(schema.fetchKey)) {
+          payload.append(schema.fetchKey, pathData[2].id);
+        }
       }
 
       await schema.apis.add(payload);
@@ -212,11 +263,11 @@ function ManualEntryPopup({ pathData, year, onClose, onSave }) {
   useEffect(() => {
     if (schema?.middleForm?.[0]?.type === 'tableInput' && facilityId) {
       fetchEmployeeCommutingConf({}, facilityId, year).then(res => {
-        setCommutingList(res.data?.map(i => ({ 
-          ...i, 
-          numberOfPeople: 0, 
-          distance: 0, 
-          remark: '' 
+        setCommutingList(res.data?.map(i => ({
+          ...i,
+          numberOfPeople: 0,
+          distance: 0,
+          remark: ''
         })) || []);
       });
     }
@@ -228,7 +279,7 @@ function ManualEntryPopup({ pathData, year, onClose, onSave }) {
     newList[index][key] = (key === 'numberOfPeople' || key === 'distance') ? Number(val) : val;
     setCommutingList(newList);
     setFormData(prev => ({ ...prev, employeeCommutingDataDetails: newList }));
-    
+
     // Clear grid error on change
     if (errors[`${index}-${key}`]) {
       setErrors(prev => {
@@ -241,7 +292,7 @@ function ManualEntryPopup({ pathData, year, onClose, onSave }) {
 
   const renderField = (field) => {
     if (field.hideKey && hideUsage2) return null;
-    
+
     const value = formData[field._key] ?? '';
 
     if (field.type === 'hidden') {
@@ -277,7 +328,7 @@ function ManualEntryPopup({ pathData, year, onClose, onSave }) {
         <label>
           {label}
         </label>
-        
+
         {field.type === 'tableInput' ? (
           <div className="table-input-container" style={{ overflowX: 'auto', border: '1px solid var(--color-divider)', borderRadius: 'var(--radius-md)' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
@@ -293,26 +344,26 @@ function ManualEntryPopup({ pathData, year, onClose, onSave }) {
                   <tr key={idx} style={{ borderBottom: '1px solid var(--color-divider)', transition: 'background-color 0.2s ease' }} onMouseOver={e => e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.02)'} onMouseOut={e => e.currentTarget.style.backgroundColor = 'transparent'}>
                     <td style={{ padding: '12px 16px', fontWeight: '500' }}>{row.commutingModeName}</td>
                     <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         min="0"
                         step="1"
-                        value={row.numberOfPeople === 0 ? '' : row.numberOfPeople} 
-                        onChange={e => handleTableChange(idx, 'numberOfPeople', e.target.value)} 
+                        value={row.numberOfPeople === 0 ? '' : row.numberOfPeople}
+                        onChange={e => handleTableChange(idx, 'numberOfPeople', e.target.value)}
                         placeholder="0"
-                        style={{ width: '80px', padding: '6px 8px', textAlign: 'center', border: '1px solid var(--color-divider)', borderRadius: '4px', borderColor: errors[`${idx}-numberOfPeople`] ? 'var(--color-error)' : 'var(--color-divider)' }} 
+                        style={{ width: '80px', padding: '6px 8px', textAlign: 'center', border: '1px solid var(--color-divider)', borderRadius: '4px', borderColor: errors[`${idx}-numberOfPeople`] ? 'var(--color-error)' : 'var(--color-divider)' }}
                       />
                       {errors[`${idx}-numberOfPeople`] && <div style={{ color: 'var(--color-error)', fontSize: '0.65rem', marginTop: '2px', textAlign: 'center' }}>{errors[`${idx}-numberOfPeople`]}</div>}
                     </td>
                     <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         min="0"
                         step="any"
-                        value={row.distance === 0 ? '' : row.distance} 
-                        onChange={e => handleTableChange(idx, 'distance', e.target.value)} 
+                        value={row.distance === 0 ? '' : row.distance}
+                        onChange={e => handleTableChange(idx, 'distance', e.target.value)}
                         placeholder="0"
-                        style={{ width: '90px', padding: '6px 8px', textAlign: 'center', border: '1px solid var(--color-divider)', borderRadius: '4px', borderColor: errors[`${idx}-distance`] ? 'var(--color-error)' : 'var(--color-divider)' }} 
+                        style={{ width: '90px', padding: '6px 8px', textAlign: 'center', border: '1px solid var(--color-divider)', borderRadius: '4px', borderColor: errors[`${idx}-distance`] ? 'var(--color-error)' : 'var(--color-divider)' }}
                       />
                       {errors[`${idx}-distance`] && <div style={{ color: 'var(--color-error)', fontSize: '0.65rem', marginTop: '2px', textAlign: 'center' }}>{errors[`${idx}-distance`]}</div>}
                     </td>
@@ -327,10 +378,12 @@ function ManualEntryPopup({ pathData, year, onClose, onSave }) {
               <select
                 value={value}
                 onChange={(e) => handleFieldChange(field, e.target.value)}
-                disabled={field.disabled || (field.dependency === 'useDate' && !formData.useDate)}
+                disabled={field.disabled || (field.dependency === 'useDate' && !formData.useDate) || loadingFields[field._key]}
                 style={{ borderColor: error ? 'var(--color-error)' : '' }}
               >
-                <option value="" disabled hidden>請選擇</option>
+                <option value="" disabled hidden>
+                  {loadingFields[field._key] ? '載入中...' : '請選擇'}
+                </option>
                 {(options[field._key] || []).map(opt => (
                   <option key={opt.id} value={opt.id}>{opt.name}</option>
                 ))}
@@ -346,15 +399,15 @@ function ManualEntryPopup({ pathData, year, onClose, onSave }) {
                 style={{ borderColor: error ? 'var(--color-error)' : '' }}
               />
             ) : field.type === 'upload' ? (
-              <input 
-                type="file" 
+              <input
+                type="file"
                 onChange={(e) => handleFieldChange(field, e.target.files[0])}
                 accept="image/*,application/pdf"
               />
             ) : (
-              <input 
-                type={field.type === 'inputNumber' ? 'number' : 'text'} 
-                value={value} 
+              <input
+                type={field.type === 'inputNumber' ? 'number' : 'text'}
+                value={value}
                 onChange={(e) => handleFieldChange(field, e.target.value)}
                 disabled={field.disabled}
                 style={{ borderColor: error ? 'var(--color-error)' : '' }}
@@ -365,7 +418,7 @@ function ManualEntryPopup({ pathData, year, onClose, onSave }) {
             {field.unit && <span className="input-unit">{field.unit}</span>}
           </div>
         )}
-        
+
         {error && <div className="field-error-msg" style={{ color: 'var(--color-error)', fontSize: '0.75rem', marginTop: '4px' }}>{error}</div>}
         {descriptionBlock}
       </div>
@@ -379,9 +432,9 @@ function ManualEntryPopup({ pathData, year, onClose, onSave }) {
       <div className="popup-card manual-popup" style={{ maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
         {showSuccess ? (
           <div className="success-overlay" style={{ padding: '40px 20px', textAlign: 'center', animation: 'fadeSlideUp 0.4s ease' }}>
-            <div className="success-icon-wrap" style={{ 
-              width: '80px', height: '80px', background: 'rgba(34, 197, 94, 0.1)', color: '#22c55e', 
-              borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' 
+            <div className="success-icon-wrap" style={{
+              width: '80px', height: '80px', background: 'rgba(34, 197, 94, 0.1)', color: '#22c55e',
+              borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px'
             }}>
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="20 6 9 17 4 12"></polyline>
@@ -389,8 +442,8 @@ function ManualEntryPopup({ pathData, year, onClose, onSave }) {
             </div>
             <h2 style={{ margin: '0 0 8px', color: 'var(--color-text)' }}>儲存成功</h2>
             <p style={{ margin: '0 0 32px', color: 'var(--color-text-secondary)', fontSize: '1rem' }}>資料已成功紀錄至系統</p>
-            <button 
-              className="btn-primary" 
+            <button
+              className="btn-primary"
               onClick={() => {
                 setShowSuccess(false);
                 onSave(formData);

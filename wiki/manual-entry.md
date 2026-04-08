@@ -22,7 +22,9 @@ Category 3 is fully implemented with specialized logic for different transportat
 - **Employee Commuting**: A specialized grid-based UI (`tableInput`) for recording multiple commuting modes in a single entry.
 
 ### Technical Details
-- **Form Data Serialization**: Most forms use `defFormatSave` from `formConf.js`, which converts the state into a `FormData` object, handling both text fields and file uploads.
+- **Form Data Serialization**: Forms use `saveFormatting` (defaulting to `defFormatSave` from `formConf.js`) to convert state into a `FormData` object.
+  - **State Isolation**: To prevent payload pollution (which previously crashed the backend ORM due to passing mismatched temporal keys like `useYear` across generic schemas), parameters like `useYear` are completely omitted from the blanket `defFormatSave` initialization.
+  - **Overrides**: Categories requiring complex data types (like `EMPLOYEE_COMMUTING`) define their own `saveFormatting` schema override to inject specific required payload fields manually without disrupting other endpoints.
 - **Numeric Defaults**: 
   - **General Categories (1, 2, 4, 5)**: Numeric fields (`inputNumber`) are initialized as empty strings. They are mandatory; however, any invalid or cleared input defaults to `0` upon interaction in the state.
   - **Employee Commuting**: This is the only category where numeric fields (`员工人次`, `距离`) are explicitly initialized with a default value of `0` in the grid UI upon loading.
@@ -32,6 +34,11 @@ Category 3 is fully implemented with specialized logic for different transportat
   - **Validation**: Restricted to the current `reportingYear` (e.g., `2024-01-01` to `2024-12-31`).
 - **Validation**: Refactored to treat all visible and enabled fields as mandatory. Specialized validation like `checkEquipmentDate` ensures the activity date falls within the equipment's purchase and due dates.
 - **Unit Splitting**: For transportation categories, the engine supports `updateWeightAndDistanceUnit`, which can split a composite unit (e.g., Passenger-Km) into two separate activity data inputs.
+
+### Validation & Safety
+- **Closed Period Check**: For all date-based entries, the system calls `checkActivityClose(date, facilityId)` whenever the date is changed. If the period is closed (returns `false`), the entry is blocked with an alert: "此期間已關帳，無法新增或編輯資料".
+- **Required Fields**: All visible and enabled fields are mandatory. 
+- **Equipment Lifecycle**: Specialized validation (`checkEquipmentDate`) ensures activity dates fall within the equipment's purchase and due dates.
 
 ### Related Files
 - [[pwa_front/src/components/ManualEntryPopup.jsx]]: The primary UI component that renders the dynamic forms.

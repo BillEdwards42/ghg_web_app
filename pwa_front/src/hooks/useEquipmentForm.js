@@ -48,8 +48,8 @@ export function useEquipmentForm() {
         apis: resolved.apis,
         saveFormatting: resolved.saveFormatting || defaultConf.saveFormatting,
         initSetup: resolved.initSetup,
-        fetchKey: resolved.fetchKey || 'equipmentTypeId'
-      };
+        fetchKey: resolved.fetchKey // No default
+        };
 
       setLoading(false);
       return schema;

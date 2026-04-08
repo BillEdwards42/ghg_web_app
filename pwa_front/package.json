@@ -1,5 +1,6 @@
 {
   "name": "ghg_web",
+  "version": "1.0.0-dev.5",
   "private": true,
   "scripts": {
     "dev": "vite",

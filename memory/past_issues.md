@@ -32,6 +32,16 @@
   - Updated `index.html` with the modern `<meta name="mobile-web-app-capable" content="yes">` tag to resolve deprecation warnings.
 - **Outcome**: The application now loads successfully locally and in subfolder environments with the Unified Year logic fully functional.
 
+## 8. Blank Screen: Missing Import & Vite Config Error
+- **Problem**: After implementing the `ReloadPrompt` component, the app rendered a blank screen.
+- **Root Cause**: 
+    1.  **ReferenceError**: The `ReloadPrompt` component was added to the JSX in `App.jsx` but was not imported at the top of the file.
+    2.  **Vite Config Crash**: Importing `package.json` directly in `vite.config.js` using ESM syntax (`import pkg from './package.json'`) can fail in certain Node.js environments or configurations.
+- **Solution**: 
+    1.  Added the missing `import ReloadPrompt from './components/ReloadPrompt';` to `App.jsx`.
+    2.  Refactored `vite.config.js` to use `fs.readFileSync` for a safer, environment-agnostic way to read the version string.
+
+
 ## 6. Recursive Login/Logout Loop
 - **Problem**: After logging in, the app would sometimes enter an infinite loop of 401 errors and logouts, eventually crashing the browser.
 - **Root Cause**: 
@@ -50,4 +60,13 @@
 - **Solution**: 
     1.  Added `useConfFirst: true` to `bisTripConf` and `upstreamNdownstreamConf` in `formConf.js`.
     2.  Updated normalization in `useEquipmentForm.js` to replace underscores with spaces.
+    2.  Updated normalization in `useEquipmentForm.js` to replace underscores with spaces.
 
+## 9. 500 Internal Server Error (notNull Violation: useDate cannot be null)
+- **Problem**: When users attempted to save manual entry forms (like Stationary Combustion), the backend completely crashed with a 500 error reporting that `useDate` could not be null, even though `useDate` was provided in the frontend UI. The issue affected all form categories globally.
+- **Root Cause**: 
+    1.  **Payload Pollution**: During a recent update to `ManualEntryPopup.jsx`, `useYear` was explicitly injected into the root internal state (`initialState = { useYear: year, ... }`) for ALL form categories globally.
+    2.  **ORM Conflict**: The `defFormatSave` mapping helper blindly appended `useYear` if it was present. The backend's Sequelize ORM OR validation logic contains a specific override rule: if an API endpoint receives `useYear` in the `FormData` payload (indicating an annual batch record like Employee Commuting), it explicitly nullifies or ignores `useDate`. Because `useYear` polluted the payload for categories that strictly demanded an exact `useDate` (like Stationary Combustion), the backend discarded the `useDate`, triggering the database schema constraint `notNull`.
+- **Solution**: 
+    1.  **Isolated State Generation**: Removed `useYear: year` from the generic `ManualEntryPopup.jsx` initialization. `useYear` is no longer a blanket variable applied to all records.
+    2.  **Schema-Driven Construction**: Cleaned `defFormatSave` in `formConf.js` to drop universal `useYear` inclusion. Categories that genuinely require `useYear` (e.g., Employee Commuting) govern it through their own specific `saveFormatting` schema overrides instead of applying it globally to the generic `FormData`.

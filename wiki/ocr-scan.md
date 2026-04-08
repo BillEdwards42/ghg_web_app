@@ -37,17 +37,18 @@ The backend classifies the document from the image and validates it against the 
 ---
 
 ### Data Validation & Population
-The [[ConfirmationPopup]] acts as a bridge between the raw OCR response and the structured manual entry system. 
+The [[ConfirmationPopup]] acts as a bridge between the raw OCR response and the structured manual entry system.
 
-#### Direct Data Population (Bypassing Manual Steps)
-Unlike manual entry where a user must select a date before emission factors or stations are fetched, the OCR workflow populates the date and result metrics (e.g., usage, stations) simultaneously.
-- **Trigger Logic**: The `ConfirmationPopup` uses a `useEffect` hook that watches the `paymentDate`. As soon as the OCR data provides a date, the component immediately triggers the relevant dependency APIs (e.g., `fetchImportedElectricityFactors` or `fetchBisTripType`).
-- **Smart Matching**: For electricity, the system automatically matches the most relevant emission factor by parsing strings like "電力(112)" and comparing them to the `activeYear`.
+#### Unified Implementation (HSR & Railway)
+To ensure consistency with the metadata-driven manual entry system, HSR and Railway OCR results now **delegate rendering to the [[ManualEntryPopup]]**. 
+- **Orchestration**: `ConfirmationPopup` calculates the correct 3-tier `pathData` (e.g., Category 3 -> Business Trip -> HSR) and passes the OCR result as `initialData`.
+- **Dynamic Matching**: The `ManualEntryPopup` handles the fetching of station lists and emission factors. It automatically matches the OCR-provided strings (e.g., "台北", "高雄") to the correct numeric IDs returned by the API.
+- **Validation Parity**: By using the manual entry popup, OCR results automatically benefit from advanced validation logic, such as checking for closed reporting periods and equipment-specific date constraints.
 
-#### High-Speed Rail & Railway Specifics
-- **Mapping**: `tw_thsrc` maps to `HIGH_SPEED_RAIL` and `tw_railway` maps to `TRAIN`.
-- **Station Validation**: The system validates the extracted `from_name` and `to_name` against a hardcoded list of valid HSR and Railway stations. If a match is not found, it defaults to the first available station in the list.
-- **Orchestration**: Upon mounting with a valid date, the popup triggers the "種類選擇" (Type) API to ensure the dropdown is populated before the user interacts with the form.
+#### Specialized Utility Popups (Electricity & Water)
+Currently, Electricity and Water OCR still utilize specialized hardcoded UI blocks within `ConfirmationPopup.jsx`.
+- **Electricity Smart Matching**: The system automatically matches the most relevant emission factor by parsing strings like "電力(112)" and comparing them to the `activeYear`.
+- **Direct Population**: The `ConfirmationPopup` uses a `useEffect` hook that watches the `paymentDate` to trigger relevant dependency APIs immediately.
 
 ### Related Files
 - [[pwa_front/src/hooks/useOCR.js]]: Logic for image compression and OCR API calls.

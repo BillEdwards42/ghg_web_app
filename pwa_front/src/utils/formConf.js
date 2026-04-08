@@ -40,17 +40,21 @@ const formatRes = (res, id = 'id', name = 'name') => ({
 
 const defFormatSave = (value) => {
   const { useDate, useYear, file, ...other } = value;
-  const date = useYear ? { useYear } : { useDate };
-  const removeUnit = Object.entries(other)
-    .filter(([key]) => !key.toLowerCase().includes('unit'))
-    .reduce((all, [key, val]) => ({ ...all, [key]: val }), {});
   
   const formData = new FormData();
-  Object.entries({ ...removeUnit, ...date }).forEach(([key, val]) => {
-    if (val !== undefined && val !== null) {
+  
+  if (useDate) formData.append('useDate', useDate);
+
+  const cleanData = Object.entries(other)
+    .filter(([key]) => !key.toLowerCase().includes('unit'))
+    .reduce((all, [key, val]) => ({ ...all, [key]: val }), {});
+
+  Object.entries(cleanData).forEach(([key, val]) => {
+    if (val !== undefined && val !== null && val !== '') {
       formData.append(key, val);
     }
   });
+
   if (file) {
     formData.append('file', file);
   }
@@ -125,6 +129,7 @@ const bottomForm = [
 
 const category1 = {
   [STATIONARY_COMBUSTION]: {
+    fetchKey: 'equipmentTypeId',
     middleForm: [
       {
         _key: 'equipmentId',
@@ -148,6 +153,7 @@ const category1 = {
     apis: { add: addStationaryActivity }
   },
   [MOBILE_COMBUSTION]: {
+    fetchKey: 'equipmentTypeId',
     middleForm: [
       {
         _key: 'equipmentId',
@@ -188,6 +194,7 @@ const category1 = {
     apis: { add: addIndustrialActivity }
   },
   [FUGITIVE_EMISSION]: {
+    fetchKey: 'equipmentTypeId',
     middleForm: [
       {
         _key: 'equipmentId',
@@ -221,6 +228,7 @@ const category1 = {
     apis: { add: addFugitiveActivity }
   },
   [FUGITIVE_EMISSION_SEPTIC_TANK]: {
+    fetchKey: 'equipmentTypeId',
     middleForm: [
       {
         _key: 'equipmentId',

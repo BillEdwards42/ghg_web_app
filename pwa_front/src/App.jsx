@@ -5,6 +5,7 @@ import Home from './components/Home';
 import ScanSelection from './components/ScanSelection';
 import ConfirmationPopup from './components/ConfirmationPopup';
 import InstallPrompt from './components/InstallPrompt';
+import ReloadPrompt from './components/ReloadPrompt';
 import ManualCategorySelection from './components/ManualCategorySelection';
 import ManualEntryPopup from './components/ManualEntryPopup';
 import { setAuthHeaders, apiClient } from './utils/api';
@@ -230,6 +231,8 @@ function App() {
           }}
         />
       )}
+
+      <ReloadPrompt />
     </div>
   );
 }

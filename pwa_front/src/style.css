@@ -573,6 +573,7 @@ body {
   -webkit-appearance: none;
   appearance: none;
   background-color: var(--color-surface);
+  flex: 1;
 }
 
 .form-group select {
@@ -601,6 +602,7 @@ body {
   display: flex;
   align-items: center;
   width: 100%;
+  gap: 8px;
 }
 
 .input-unit {
@@ -610,6 +612,7 @@ body {
   font-weight: 600;
   color: var(--color-text-secondary);
   pointer-events: none;
+  white-space: nowrap;
 }
 
 .field-error {
@@ -965,6 +968,73 @@ body {
   to {
     opacity: 1;
   }
+}
+
+/* --- PWA Update Prompt --- */
+.pwa-update-backdrop {
+  z-index: 9999;
+}
+
+.pwa-update-card {
+  text-align: center;
+  max-width: 360px;
+}
+
+.pwa-update-icon {
+  width: 64px;
+  height: 64px;
+  background: rgba(73, 118, 203, 0.1);
+  color: var(--color-primary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+}
+
+.pwa-update-text {
+  font-size: 0.95rem;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+
+.version-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 32px;
+  background: var(--color-bg);
+  padding: 16px;
+  border-radius: var(--radius-md);
+}
+
+.version-tag {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.version-tag span {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+}
+
+.version-tag strong {
+  font-size: 1.1rem;
+  color: var(--color-text);
+}
+
+.version-tag.highlight strong {
+  color: var(--color-primary);
+}
+
+.version-arrow {
+  color: var(--color-divider);
+  font-weight: 700;
 }
 
 /* --- Utility --- */
