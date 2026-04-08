@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useOCR } from '../hooks/useOCR';
-import { apiClient, fetchImportedElectricityFactors, addImportedElectricityActivity, addBusinessTrip } from '../utils/api';
+import { apiClient, fetchImportedElectricityFactors, fetchBisTripType, addImportedElectricityActivity, addBusinessTrip } from '../utils/api';
 import { EMISSION_SOURCE, TRANSPORTATION_TYPE } from '../utils/EmissionSrc';
 
 const { TRAIN, HIGH_SPEED_RAIL } = TRANSPORTATION_TYPE;
@@ -48,13 +48,15 @@ function ConfirmationPopup({ data, file, category, onClose, onSave, activeYear }
   const [paymentDate, setPaymentDate] = useState('');
   const [dateError, setDateError] = useState('');
   
+  // Dynamic Option State (Factors/Types)
+  const [factorOptions, setFactorOptions] = useState([]);
+  const [selectedFactorId, setSelectedFactorId] = useState('');
+  const [unit, setUnit] = useState('');
+  const [loadingFactors, setLoadingFactors] = useState(false);
+
   // Electricity specific
   const [usage, setUsage] = useState('');
   const [usageError, setUsageError] = useState('');
-  const [factorOptions, setFactorOptions] = useState([]);
-  const [selectedFactorId, setSelectedFactorId] = useState('');
-  const [unit, setUnit] = useState('度');
-  const [loadingFactors, setLoadingFactors] = useState(false);
 
   // Transport specific
   const [transportType, setTransportType] = useState('高鐵');
@@ -72,10 +74,14 @@ function ConfirmationPopup({ data, file, category, onClose, onSave, activeYear }
     return loc.id;
   }, []);
 
+  const isTransport = category === '高鐵/台鐵車票';
+  const isWater = category === '水費單';
+  const isElectricity = category === '電費單';
+
   // Initialize from OCR Data
   useEffect(() => {
     if (data && schema) {
-      if (category === '高鐵/台鐵車票') {
+      if (isTransport) {
         const isRailway = data.type === 'tw_railway';
         setTransportType(isRailway ? '台鐵' : '高鐵');
         const rawDate = data.date || '';
@@ -85,12 +91,12 @@ function ConfirmationPopup({ data, file, category, onClose, onSave, activeYear }
         setToName(stationList.includes(data.to_name) ? data.to_name : stationList[1] || stationList[0]);
         setPassengerCount('1');
         setPassengerError('');
-      } else if (category === '水費單') {
+      } else if (isWater) {
         const rawDate = data[schema.fields.date] || '';
         setPaymentDate(rawDate.replace(/[\/\.]/g, '-'));
         setCo2(data[schema.fields.co2] || '0');
         setCo2Error('');
-      } else if (category === '電費單') {
+      } else if (isElectricity) {
         const rawDate = data[schema.fields.date] || '';
         setPaymentDate(rawDate.replace(/[\/\.]/g, '-'));
         setUsage(data[schema.fields.usage] || '0');
@@ -98,7 +104,7 @@ function ConfirmationPopup({ data, file, category, onClose, onSave, activeYear }
         setUnit(schema.unit || '度');
       }
     }
-  }, [data, schema, category]);
+  }, [data, schema, isTransport, isWater, isElectricity]);
 
   // Date Validation Effect
   useEffect(() => {
@@ -112,37 +118,56 @@ function ConfirmationPopup({ data, file, category, onClose, onSave, activeYear }
     }
   }, [paymentDate, activeYear]);
 
-  // Electricity Factor Fetching & Smart Matching
+  // Factor Fetching & Smart Matching (Electricity & Transport)
   useEffect(() => {
-    const isElectricity = category === '電費單';
-    if (isElectricity && paymentDate && !dateError && facilityId) {
+    if (paymentDate && !dateError && facilityId) {
       setLoadingFactors(true);
-      fetchImportedElectricityFactors(facilityId, 39, activeYear, paymentDate)
-        .then(res => {
-          const factors = res.data || [];
-          setFactorOptions(factors);
+      
+      if (isElectricity) {
+        fetchImportedElectricityFactors(facilityId, 39, activeYear, paymentDate)
+          .then(res => {
+            const factors = res.data || [];
+            setFactorOptions(factors);
 
-          const targetYearNum = parseInt(activeYear);
-          const electricityFactors = factors
-            .map(f => {
-              const name = f.emissionFactorName || '';
-              const match = name.match(/電力\((\d+)\)/);
-              return match ? { ...f, matchYear: parseInt(match[1]) } : null;
-            })
-            .filter(f => f && f.matchYear <= targetYearNum)
-            .sort((a, b) => b.matchYear - a.matchYear);
+            const targetYearNum = parseInt(activeYear);
+            const electricityFactors = factors
+              .map(f => {
+                const name = f.emissionFactorName || '';
+                const match = name.match(/電力\((\d+)\)/);
+                return match ? { ...f, matchYear: parseInt(match[1]) } : null;
+              })
+              .filter(f => f && f.matchYear <= targetYearNum)
+              .sort((a, b) => b.matchYear - a.matchYear);
 
-          if (electricityFactors.length > 0) {
-            setSelectedFactorId(electricityFactors[0].emissionSourceId);
-            setUnit(electricityFactors[0].emissionFactorUnit || '度');
-          } else {
-            setSelectedFactorId('');
-          }
-        })
-        .catch(err => console.error('Failed to fetch electricity factors', err))
-        .finally(() => setLoadingFactors(false));
+            if (electricityFactors.length > 0) {
+              setSelectedFactorId(electricityFactors[0].emissionSourceId);
+              setUnit(electricityFactors[0].emissionFactorUnit || '度');
+            } else {
+              setSelectedFactorId('');
+            }
+          })
+          .catch(err => console.error('Failed to fetch electricity factors', err))
+          .finally(() => setLoadingFactors(false));
+      } else if (isTransport) {
+        // Map transport type to equipmentTypeId for API
+        // HSR = 40, Train = 41 based on system mapping
+        const equipmentTypeId = transportType === '台鐵' ? 41 : 40;
+        fetchBisTripType(facilityId, equipmentTypeId, activeYear, paymentDate)
+          .then(res => {
+            const factors = res.data || [];
+            setFactorOptions(factors);
+            if (factors.length > 0) {
+              setSelectedFactorId(factors[0].emissionSourceId);
+              setUnit(factors[0].emissionFactorUnit || '人次');
+            } else {
+              setSelectedFactorId('');
+            }
+          })
+          .catch(err => console.error('Failed to fetch transport factors', err))
+          .finally(() => setLoadingFactors(false));
+      }
     }
-  }, [category, paymentDate, dateError, facilityId, activeYear]);
+  }, [category, paymentDate, dateError, facilityId, activeYear, isElectricity, isTransport, transportType]);
 
   if (!data || !schema) return null;
 
@@ -151,13 +176,15 @@ function ConfirmationPopup({ data, file, category, onClose, onSave, activeYear }
     if (dateError) return;
     
     let entryData = {};
-    const isElectricity = category === '電費單';
-    const isTransport = category === '高鐵/台鐵車票';
 
     if (isTransport) {
       const isPositiveInt = /^\d+$/.test(passengerCount) && parseInt(passengerCount) > 0;
       if (!isPositiveInt) {
         setPassengerError('請輸入整數');
+        return;
+      }
+      if (!selectedFactorId) {
+        alert('請選擇種類');
         return;
       }
       
@@ -173,9 +200,10 @@ function ConfirmationPopup({ data, file, category, onClose, onSave, activeYear }
         year: activeYear,
         source: '',
         custodian: '',
-        equipmentTypeKey: equipmentTypeKey
+        equipmentTypeKey: equipmentTypeKey,
+        emissionSourceId: selectedFactorId
       };
-    } else if (category === '水費單') {
+    } else if (isWater) {
       const isPositiveInt = /^\d+$/.test(co2) && parseInt(co2) > 0;
       if (!isPositiveInt) {
         setCo2Error('請輸入整數');
@@ -252,9 +280,6 @@ function ConfirmationPopup({ data, file, category, onClose, onSave, activeYear }
     }
   };
 
-  const isTransport = category === '高鐵/台鐵車票';
-  const isWater = category === '水費單';
-  const isElectricity = category === '電費單';
   const currentStationList = transportType === '台鐵' ? TAIWAN_RAILWAY_STATIONS : HIGH_SPEED_RAIL_STATIONS;
 
   return (

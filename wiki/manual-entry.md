@@ -23,6 +23,13 @@ Category 3 is fully implemented with specialized logic for different transportat
 
 ### Technical Details
 - **Form Data Serialization**: Most forms use `defFormatSave` from `formConf.js`, which converts the state into a `FormData` object, handling both text fields and file uploads.
+- **Numeric Defaults**: 
+  - **General Categories (1, 2, 4, 5)**: Numeric fields (`inputNumber`) are initialized as empty strings. They are mandatory; however, any invalid or cleared input defaults to `0` upon interaction in the state.
+  - **Employee Commuting**: This is the only category where numeric fields (`员工人次`, `距离`) are explicitly initialized with a default value of `0` in the grid UI upon loading.
+- **Date Selection**: 
+  - The `date` field type uses the browser's native `<input type="date">`. 
+  - **Mobile Behavior**: On Android and iOS, this automatically triggers the **system calendar** on the first tap, providing a platform-native and familiar user experience.
+  - **Validation**: Restricted to the current `reportingYear` (e.g., `2024-01-01` to `2024-12-31`).
 - **Validation**: Refactored to treat all visible and enabled fields as mandatory. Specialized validation like `checkEquipmentDate` ensures the activity date falls within the equipment's purchase and due dates.
 - **Unit Splitting**: For transportation categories, the engine supports `updateWeightAndDistanceUnit`, which can split a composite unit (e.g., Passenger-Km) into two separate activity data inputs.
 

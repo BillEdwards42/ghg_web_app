@@ -45,3 +45,30 @@ Resolved the issue where "出發站" and "抵達站" rendered as text inputs ins
 
 ### **⏳ Pending / Unverified: Categories 4 & 5 (Purchased Goods, Waste, Processing)**
 - **Metric Initialization:** These rely on `getDefaultUnit` via `initSetup`. Need to verify mapping of `emissionSourceId` from Tier 3 selections.
+
+### **🛑 Technical Debt: OCR Error Handling & Validation**
+- **Missing Logic:** Currently, the error handling logic for OCR (Electricity, Water, and HSR/Railway) has not been implemented.
+- **Requirements:** The system needs to gracefully handle and display localized error messages for backend failures, such as `422 (Type Mismatch)`, `400 (Missing File)`, and general network errors, within the `ScanSelection` or `ConfirmationPopup` UI.
+- **Validation Gap:** The case where `checkActivityClose` returns `false` (indicating a closed period) has not yet been designed or handled for the OCR confirmation flow. Currently, it only blocks manual entry.
+
+### **⚠️ Current Blocker: OCR vs. Manual Implementation Divergence**
+There is a significant architectural mismatch between the **OCR Confirmation Flow** and the **Manual Entry Registry Flow**.
+
+#### **The Issue:**
+- **Static vs. Dynamic:** `ConfirmationPopup.jsx` currently uses hardcoded UI blocks for HSR and Railway. This creates a "second implementation" of these forms that does not benefit from the dynamic configurations in `formConf.js`.
+- **Field Mismatch:** The hardcoded OCR popup cannot accommodate all the fields available in the manual entry registry (e.g., specific remark fields or custom metadata).
+- **Redundant Logic:** `ConfirmationPopup` has its own station lists and fetching logic, which duplicates the work done in `ManualEntryPopup`.
+
+#### **Attempted Fixes & Limitations:**
+- **Automated Fetching:** I recently attempted to automate the "種類選擇" (Type) fetching in `ConfirmationPopup` using hardcoded IDs (40/41). While this fixed the immediate `ReferenceError` and pre-populated the factors, it still relies on a static UI structure that doesn't match the "Registry Pattern" used elsewhere.
+- **Pre-selection Logic:** Implementing pre-selection for stations in the current static popup is fragile because it doesn't utilize the same `formatRes` and normalization logic as the main registry.
+
+#### **Planned Unification Strategy:**
+1.  **Abolish Static Popups:** Remove the hardcoded HSR/Railway UI sections from `ConfirmationPopup.jsx`.
+2.  **Unify with Manual Entry:** Refactor the OCR flow to trigger the `ManualEntryPopup` component directly after a scan.
+3.  **Data Injection:** Pass the OCR result data as "Initial State" to the `ManualEntryPopup`.
+4.  **Registry Integration:**
+    *   The system must map the OCR `type` (e.g., `tw_thsrc`) to the correct 3-tier `pathData` required by the registry.
+    *   The `ManualEntryPopup` must be updated to accept an `initialData` prop.
+    *   When `initialData` is present, the popup should trigger its standard API option fetching (for stations and factors) and then **pre-select** the options that match the OCR strings.
+    *   This ensures OCR users get the exact same validation, fields, and behavior as manual users, but with the convenience of pre-filled data.

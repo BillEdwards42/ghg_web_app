@@ -337,25 +337,15 @@ function ManualEntryPopup({ pathData, year, onClose, onSave }) {
               </select>
             ) : field.type === 'date' ? (
               <input
-                type="text"
-                onFocus={(e) => {
-                  e.target.type = 'date';
-                  try { e.target.showPicker(); } catch(err) {}
-                }}
-                onClick={(e) => {
-                  if (e.target.type !== 'date') {
-                    e.target.type = 'date';
-                    try { e.target.showPicker(); } catch(err) {}
-                  }
-                }}
-                onBlur={(e) => { e.target.type = 'text'; }}
+                type="date"
                 placeholder="請選擇日期"
                 value={value}
                 onChange={(e) => handleFieldChange(field, e.target.value)}
                 min={`${year}-01-01`}
                 max={`${year}-12-31`}
                 style={{ borderColor: error ? 'var(--color-error)' : '' }}
-              />            ) : field.type === 'upload' ? (
+              />
+            ) : field.type === 'upload' ? (
               <input 
                 type="file" 
                 onChange={(e) => handleFieldChange(field, e.target.files[0])}
