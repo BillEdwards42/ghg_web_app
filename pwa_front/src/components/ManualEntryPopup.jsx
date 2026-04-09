@@ -15,7 +15,7 @@ function ManualEntryPopup({ pathData, year, onClose, onSave, initialData }) {
     };
     // For transportation OCR tickets
     if (initialData) {
-      initialState.usage1 = initialData.usage1 || initialData.passengerCount || ''; 
+      initialState.usage1 = initialData.usage1 || initialData.passengerCount || '';
       initialState.departure = ''; // Placeholder for ID matching
       initialState.destination = ''; // Placeholder for ID matching
     }
@@ -27,6 +27,8 @@ function ManualEntryPopup({ pathData, year, onClose, onSave, initialData }) {
   const [hideUsage2, setHideUsage2] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [noEquipmentWarning, setNoEquipmentWarning] = useState(false);
+  const [activityClosedWarning, setActivityClosedWarning] = useState(false);
 
   const hasInitialized = useRef(false);
 
@@ -68,10 +70,38 @@ function ManualEntryPopup({ pathData, year, onClose, onSave, initialData }) {
           setOptions(prev => ({ ...prev, [field._key]: data }));
 
           // OCR Pre-selection for emissionSourceId (e.g. 種類選擇)
-          if (initialData && field._key === 'emissionSourceId' && data.length > 0) {
+          if (initialData && field._key === 'emissionSourceId') {
+            if (data.length === 0) {
+              setNoEquipmentWarning(true);
+            } else {
+              setNoEquipmentWarning(false);
+              const checkRes = await checkActivityClose(useDate, facilityId);
+              if (checkRes.data?.result === false) {
+                setActivityClosedWarning(true);
+              } else {
+                setActivityClosedWarning(false);
+                const targetId = formData.emissionSourceId || data[0].id;
+                const selectedItem = data.find(opt => String(opt.id) === String(targetId));
+
+                if (selectedItem) {
+                  setFormData(prev => ({ ...prev, emissionSourceId: selectedItem.id }));
+                  if (field.handleSelectorChange) {
+                    field.handleSelectorChange({
+                      item: selectedItem,
+                      formData: { ...formData, emissionSourceId: selectedItem.id },
+                      setFormData,
+                      setErrors,
+                      facilityId,
+                      emissionTypeId: pathData[1].id,
+                      setHideUsage2
+                    });
+                  }
+                }
+              }
+            }
+          } else if (!initialData && field._key === 'emissionSourceId' && data.length > 0) { // Keep normal manual preselection without block
             const targetId = formData.emissionSourceId || data[0].id;
             const selectedItem = data.find(opt => String(opt.id) === String(targetId));
-
             if (selectedItem) {
               setFormData(prev => ({ ...prev, emissionSourceId: selectedItem.id }));
               if (field.handleSelectorChange) {
@@ -147,12 +177,11 @@ function ManualEntryPopup({ pathData, year, onClose, onSave, initialData }) {
       if (value === '') {
         newValue = '';
       } else {
-        const num = parseFloat(value);
-        if (num < 0) {
+        if (!/^\d+$/.test(value)) {
           newValue = value;
-          fieldError = '數值不能為負';
+          fieldError = '僅能輸入非負整數';
         } else {
-          newValue = value; // Preserve exact string so decimals ("1.") aren't swallowed
+          newValue = value;
         }
       }
     }
@@ -241,11 +270,6 @@ function ManualEntryPopup({ pathData, year, onClose, onSave, initialData }) {
 
       if (payload instanceof FormData) {
         if (!payload.has('facilityId')) payload.append('facilityId', facilityId);
-        if (!payload.has('year')) payload.append('year', year);
-        // Only append the fetchKey (equipmentTypeId/categoryItemId) if defined in schema
-        if (schema.fetchKey && !payload.has(schema.fetchKey)) {
-          payload.append(schema.fetchKey, pathData[2].id);
-        }
       }
 
       await schema.apis.add(payload);
@@ -350,6 +374,7 @@ function ManualEntryPopup({ pathData, year, onClose, onSave, initialData }) {
                         step="1"
                         value={row.numberOfPeople === 0 ? '' : row.numberOfPeople}
                         onChange={e => handleTableChange(idx, 'numberOfPeople', e.target.value)}
+                        onKeyDown={(e) => { if(['.','e','E','-','+'].includes(e.key)) e.preventDefault(); }}
                         placeholder="0"
                         style={{ width: '80px', padding: '6px 8px', textAlign: 'center', border: '1px solid var(--color-divider)', borderRadius: '4px', borderColor: errors[`${idx}-numberOfPeople`] ? 'var(--color-error)' : 'var(--color-divider)' }}
                       />
@@ -359,9 +384,10 @@ function ManualEntryPopup({ pathData, year, onClose, onSave, initialData }) {
                       <input
                         type="number"
                         min="0"
-                        step="any"
+                        step="1"
                         value={row.distance === 0 ? '' : row.distance}
                         onChange={e => handleTableChange(idx, 'distance', e.target.value)}
+                        onKeyDown={(e) => { if(['.','e','E','-','+'].includes(e.key)) e.preventDefault(); }}
                         placeholder="0"
                         style={{ width: '90px', padding: '6px 8px', textAlign: 'center', border: '1px solid var(--color-divider)', borderRadius: '4px', borderColor: errors[`${idx}-distance`] ? 'var(--color-error)' : 'var(--color-divider)' }}
                       />
@@ -409,9 +435,11 @@ function ManualEntryPopup({ pathData, year, onClose, onSave, initialData }) {
                 type={field.type === 'inputNumber' ? 'number' : 'text'}
                 value={value}
                 onChange={(e) => handleFieldChange(field, e.target.value)}
+                onKeyDown={field.type === 'inputNumber' ? (e) => { if(['.','e','E','-','+'].includes(e.key)) e.preventDefault(); } : undefined}
+                min={field.type === 'inputNumber' ? "0" : undefined}
+                step={field.type === 'inputNumber' ? "1" : undefined}
                 disabled={field.disabled}
                 style={{ borderColor: error ? 'var(--color-error)' : '' }}
-                step="any"
               />
             )}
 
@@ -451,6 +479,52 @@ function ManualEntryPopup({ pathData, year, onClose, onSave, initialData }) {
               style={{ width: '100%', padding: '14px' }}
             >
               完成
+            </button>
+          </div>
+        ) : activityClosedWarning ? (
+          <div className="warning-overlay" style={{ padding: '40px 20px', textAlign: 'center', animation: 'fadeSlideUp 0.4s ease' }}>
+            <div className="warning-icon-wrap" style={{
+              width: '80px', height: '80px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444',
+              borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px'
+            }}>
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+            </div>
+            <h2 style={{ margin: '0 0 8px', color: 'var(--color-text)' }}>該年度尚未建立設備</h2>
+            <p style={{ margin: '0 0 32px', color: 'var(--color-text-secondary)', fontSize: '1rem' }}>此期間的活動數據尚未開放或已關帳</p>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={onClose}
+              style={{ width: '100%', padding: '14px', borderColor: '#ef4444', color: '#ef4444', backgroundColor: 'transparent' }}
+            >
+              關閉
+            </button>
+          </div>
+        ) : noEquipmentWarning ? (
+          <div className="warning-overlay" style={{ padding: '40px 20px', textAlign: 'center', animation: 'fadeSlideUp 0.4s ease' }}>
+            <div className="warning-icon-wrap" style={{
+              width: '80px', height: '80px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444',
+              borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px'
+            }}>
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+            </div>
+            <h2 style={{ margin: '0 0 8px', color: 'var(--color-text)' }}>您沒有建立相關設備</h2>
+            <p style={{ margin: '0 0 32px', color: 'var(--color-text-secondary)', fontSize: '1rem' }}>查無對應之設備或係數，請確認後再嘗試</p>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={onClose}
+              style={{ width: '100%', padding: '14px', borderColor: '#ef4444', color: '#ef4444', backgroundColor: 'transparent' }}
+            >
+              關閉
             </button>
           </div>
         ) : (

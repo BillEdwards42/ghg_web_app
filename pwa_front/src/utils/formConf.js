@@ -122,7 +122,10 @@ const topForm = [{
 
 const bottomForm = [
   { _key: 'usage', type: 'inputNumber', required: true, labelName: '耗用量' },
-  { _key: 'unit', type: 'input', required: false, disabled: true, labelName: '單位' }
+  { _key: 'unit', type: 'input', required: false, disabled: true, labelName: '單位' },
+  { _key: 'source', type: 'hidden' },
+  { _key: 'custodian', type: 'hidden' },
+  { _key: 'file', type: 'hidden' }
 ];
 
 // ---------------------------------------- Categories ----------------------------------------
@@ -347,11 +350,7 @@ const bisTripConf = (stationApi, stationApiFormat = { idKey: 'id', nameKey: 'nam
       { _key: 'usage2', labelName: '活動數據 2', type: 'inputNumber', hideKey: 'hideUsage2' },
       { _key: 'unit2', labelName: '單位', type: 'input', disabled: true, hideKey: 'hideUsage2' }
     ],
-    bottomForm: [
-      { _key: 'source', type: 'hidden' },
-      { _key: 'custodian', type: 'hidden' },
-      { _key: 'file', type: 'hidden' }
-    ],
+    bottomForm: bottomForm.slice(2, 5),
     useConfFirst: true,
     apis: { add: addBusinessTrip }
   };
@@ -364,11 +363,7 @@ const category3 = {
   [EMPLOYEE_COMMUTING]: {
     topForm: [{ _key: 'useYear', labelName: '年度', type: 'input', disabled: true, required: true }],
     middleForm: [{ _key: 'employeeCommutingDataDetails', type: 'tableInput', labelName: '數據填寫' }],
-    bottomForm: [
-      { _key: 'source', type: 'hidden' },
-      { _key: 'custodian', type: 'hidden' },
-      { _key: 'file', type: 'hidden' }
-    ],
+    bottomForm: bottomForm.slice(2, 5),
     apis: { add: addEmployeeCommuting },
     saveFormatting: (val) => {
       const formData = new FormData();
@@ -530,5 +525,14 @@ export const formConf = {
   ...category2,
   ...category3,
   ...category4,
-  ...category5
+  ...category5,
+  '廢棄物處理': category4[WASTE_DISPOSAL_SERVICE],
+  '廢棄物運輸': category4[WASTE_DISPOSAL_TRANSPORTATION],
+  '營運產生之廢棄物': category4[WASTE_DISPOSAL_SERVICE],
+  '採購之產品及服務': category4[PURCHASED_PRODUCT_N_SERVICE],
+  '燃料與能源相關活動': category4[FUEL_N_ENERGY_ACTIVITY],
+  '資本物品': category4[UPSTREAM_EMISSION],
+  '售出產品之加工': category5[PROCESSING_PRODUCT_N_SERVICE],
+  '售出產品之使用': category5[USE_PRODUCT_N_SERVICE],
+  '售出產品之最終處置': category5[END_TREATMENT_PRODUCT_N_SERVICE]
 };

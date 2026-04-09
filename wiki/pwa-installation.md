@@ -15,6 +15,7 @@ The application uses a **Service Worker** with a `promptForUpdate` strategy to m
 - **Detection**: When a new version is deployed (detected via `sw.js` hash changes), the [[pwa_front/src/components/ReloadPrompt.jsx]] component triggers a high-visibility modal.
 - **Version Display**: The modal displays the `__APP_VERSION__` (defined in `vite.config.js`) and attempts to fetch the latest version from the server for user comparison.
 - **Cache Management**: `cleanupOutdatedCaches: true` is enabled in `vite.config.js` to ensure old asset revisions are purged from the user's device upon activation, preventing storage growth.
+- **Workbox Window**: The registration hooks (`virtual:pwa-register/react`) natively rely on the `workbox-window` module to securely interact with the service worker lifecycle from within the React component context.
 
 ### Development Versioning Policy
 To ensure the [[pwa_front/src/components/ReloadPrompt.jsx]] correctly detects and notifies users of new changes during development, the following versioning rules apply:

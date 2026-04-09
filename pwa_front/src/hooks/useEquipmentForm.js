@@ -30,8 +30,8 @@ export function useEquipmentForm() {
       const defaultConf = formConf.default;
 
       // 2. Merge Logic (Parity with legacy ActivityForm.js)
-      // If useConfFirst is true on the equipment level, it takes priority.
-      const extraConf = (equipmentConf.useConfFirst ? equipmentConf : categoryConf) || equipmentConf;
+      const specificConf = equipmentConf.useConfFirst ? equipmentConf : categoryConf;
+      const extraConf = specificConf.middleForm ? specificConf : equipmentConf;
       
       const resolved = {
         ...defaultConf,

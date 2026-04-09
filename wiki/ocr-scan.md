@@ -49,6 +49,8 @@ To ensure consistency with the metadata-driven manual entry system, HSR and Rail
 Currently, Electricity and Water OCR still utilize specialized hardcoded UI blocks within `ConfirmationPopup.jsx`.
 - **Electricity Smart Matching**: The system automatically matches the most relevant emission factor by parsing strings like "電力(112)" and comparing them to the `activeYear`.
 - **Direct Population**: The `ConfirmationPopup` uses a `useEffect` hook that watches the `paymentDate` to trigger relevant dependency APIs immediately.
+- **Missing Equipment Guard**: For electricity, if `fetchImportedElectricityFactors` returns an empty array, the UI is blocked by a dedicated warning overlay ("您沒有建立相關設備") preventing manual progression without proper backend configuration.
+- **Production Validation**: All Github Pages POC bypass mock data options have been removed. The OCR pipeline rigorously enforces real backend endpoints and schema validation.
 
 ### Related Files
 - [[pwa_front/src/hooks/useOCR.js]]: Logic for image compression and OCR API calls.

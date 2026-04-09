@@ -43,8 +43,11 @@ Resolved the issue where "出發站" and "抵達站" rendered as text inputs ins
 - **Bus/Taxi/Car/Motorcycle:** Currently use `bisTripConf` with `input` for stations. Need to verify if these remain free-text or require specific lists.
 - **Upstream/Downstream Transportation (Ship, Land, Air):** Use `transportationMidForm`. Need to verify unit splitting and departure/arrival station logic.
 
-### **⏳ Pending / Unverified: Categories 4 & 5 (Purchased Goods, Waste, Processing)**
-- **Metric Initialization:** These rely on `getDefaultUnit` via `initSetup`. Need to verify mapping of `emissionSourceId` from Tier 3 selections.
+### **✅ Fixed: Categories 4 & 5 Form Resolution & Payload Purification**
+- **Shadowing Bug Fix:** Fixed an issue in `useEquipmentForm.js` where a fallback empty object `{}` from `categoryConf` would truthily shadow a valid `equipmentConf` schema. Restored strict `middleForm` truthiness checking matching legacy logic.
+- **Alias Integration:** Added exact Chinese strings (e.g. `'營運產生之廢棄物': category4[WASTE_DISPOSAL_SERVICE]`) directly to the `formConf` export registry to guarantee dynamic mapping.
+- **Hidden Dependencies:** Restored `source`, `custodian`, and `file` strictly as `type: 'hidden'` within `bottomForm`. This satisfies the core architectural requirement where manual forms generate clean serialized data dropping empty strings naturally, whilst not burdening the visual UI.
+- **Payload Purification:** Scrubbed out arbitrary `year` injections and Category 1 specific `fetchKey` overrides (`equipmentTypeId`) that were polluting the `defFormatSave` FormData uploads, as `useDate` provides sole canonical backend truth.
 
 ### **🛑 Technical Debt: OCR Error Handling & Validation**
 - **Missing Logic:** Currently, the error handling logic for OCR (Electricity, Water, and HSR/Railway) has not been implemented.

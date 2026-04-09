@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useOCR } from '../hooks/useOCR';
-import { apiClient, fetchImportedElectricityFactors, addImportedElectricityActivity } from '../utils/api';
+import { apiClient, fetchImportedElectricityFactors, addImportedElectricityActivity, checkActivityClose } from '../utils/api';
 import { EMISSION_SOURCE, TRANSPORTATION_TYPE } from '../utils/EmissionSrc';
 import ManualEntryPopup from './ManualEntryPopup';
 
@@ -12,6 +12,8 @@ function ConfirmationPopup({ data, file, category, onClose, onSave, activeYear }
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [noEquipmentWarning, setNoEquipmentWarning] = useState(false);
+  const [activityClosedWarning, setActivityClosedWarning] = useState(false);
 
   // Common
   const [paymentDate, setPaymentDate] = useState('');
@@ -115,8 +117,19 @@ function ConfirmationPopup({ data, file, category, onClose, onSave, activeYear }
           if (electricityFactors.length > 0) {
             setSelectedFactorId(electricityFactors[0].emissionSourceId);
             setUnit(electricityFactors[0].emissionFactorUnit || '度');
+            setNoEquipmentWarning(false);
+
+            // Activity Close Check (Electricity OCR)
+            checkActivityClose(paymentDate, facilityId).then(checkRes => {
+              if (checkRes.data?.result === false) {
+                setActivityClosedWarning(true);
+              } else {
+                setActivityClosedWarning(false);
+              }
+            });
           } else {
             setSelectedFactorId('');
+            setNoEquipmentWarning(true);
           }
         })
         .catch(err => console.error('Failed to fetch electricity factors', err))
@@ -126,6 +139,19 @@ function ConfirmationPopup({ data, file, category, onClose, onSave, activeYear }
 
   if (!data || !schema) return null;
 
+  // Activity Close Check (Water OCR)
+  useEffect(() => {
+    if (isWater && paymentDate && !dateError && facilityId) {
+      checkActivityClose(paymentDate, facilityId).then(checkRes => {
+        if (checkRes.data?.result === false) {
+          setActivityClosedWarning(true);
+        } else {
+          setActivityClosedWarning(false);
+        }
+      });
+    }
+  }, [paymentDate, dateError, facilityId, isWater]);
+
   const handleConfirm = async (e) => {
     if (e) e.preventDefault();
     if (dateError) return;
@@ -133,9 +159,9 @@ function ConfirmationPopup({ data, file, category, onClose, onSave, activeYear }
     let entryData = {};
 
     if (isWater) {
-      const isPositiveInt = /^\d+$/.test(co2) && parseInt(co2) > 0;
+      const isPositiveInt = /^\d+$/.test(co2) && parseInt(co2, 10) >= 0;
       if (!isPositiveInt) {
-        setCo2Error('請輸入整數');
+        setCo2Error('請輸入正整數');
         return;
       }
       entryData = {
@@ -144,9 +170,9 @@ function ConfirmationPopup({ data, file, category, onClose, onSave, activeYear }
         date: paymentDate
       };
     } else if (isElectricity) {
-      const usageNum = parseFloat(usage);
-      if (isNaN(usageNum) || usageNum <= 0) {
-        setUsageError('請輸入正確的耗用量');
+      const isPositiveInt = /^\d+$/.test(usage) && parseInt(usage, 10) >= 0;
+      if (!isPositiveInt) {
+        setUsageError('請輸入非負整數耗用量');
         return;
       }
       if (!selectedFactorId) {
@@ -158,7 +184,6 @@ function ConfirmationPopup({ data, file, category, onClose, onSave, activeYear }
         emissionSourceId: selectedFactorId,
         usage: usageNum,
         facilityId: facilityId,
-        year: activeYear,
         source: '',
         custodian: ''
       };
@@ -222,6 +247,52 @@ function ConfirmationPopup({ data, file, category, onClose, onSave, activeYear }
               完成
             </button>
           </div>
+        ) : noEquipmentWarning ? (
+          <div className="warning-overlay" style={{ padding: '40px 20px', textAlign: 'center', animation: 'fadeSlideUp 0.4s ease' }}>
+            <div className="warning-icon-wrap" style={{ 
+              width: '80px', height: '80px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', 
+              borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' 
+            }}>
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+            </div>
+            <h2 style={{ margin: '0 0 8px', color: 'var(--color-text)' }}>您沒有建立相關設備</h2>
+            <p style={{ margin: '0 0 32px', color: 'var(--color-text-secondary)', fontSize: '1rem' }}>查無對應之設備或係數，請確認後再嘗試</p>
+            <button 
+              type="button"
+              className="btn-secondary" 
+              onClick={onClose}
+              style={{ width: '100%', padding: '14px', borderColor: '#ef4444', color: '#ef4444', backgroundColor: 'transparent' }}
+            >
+              關閉
+            </button>
+          </div>
+        ) : activityClosedWarning ? (
+          <div className="warning-overlay" style={{ padding: '40px 20px', textAlign: 'center', animation: 'fadeSlideUp 0.4s ease' }}>
+            <div className="warning-icon-wrap" style={{ 
+              width: '80px', height: '80px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', 
+              borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' 
+            }}>
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+            </div>
+            <h2 style={{ margin: '0 0 8px', color: 'var(--color-text)' }}>該年度尚未建立設備</h2>
+            <p style={{ margin: '0 0 32px', color: 'var(--color-text-secondary)', fontSize: '1rem' }}>此期間的活動數據尚未開放或已關帳</p>
+            <button 
+              type="button"
+              className="btn-secondary" 
+              onClick={onClose}
+              style={{ width: '100%', padding: '14px', borderColor: '#ef4444', color: '#ef4444', backgroundColor: 'transparent' }}
+            >
+              關閉
+            </button>
+          </div>
         ) : (
           <>
             <div className="popup-header">
@@ -243,7 +314,7 @@ function ConfirmationPopup({ data, file, category, onClose, onSave, activeYear }
                     <div className="form-group">
                       <label>CO2</label>
                       <div className="input-with-unit">
-                        <input type="text" value={co2} onChange={(e) => setCo2(e.target.value)} />
+                        <input type="number" min="0" step="1" value={co2} onChange={(e) => setCo2(e.target.value)} onKeyDown={(e) => { if(['.','e','E','-','+'].includes(e.key)) e.preventDefault(); }} />
                         <span className="input-unit">kg</span>
                       </div>
                       {co2Error && <div className="field-error-msg" style={{ color: 'var(--color-error)', fontSize: '0.75rem' }}>{co2Error}</div>}
@@ -281,7 +352,7 @@ function ConfirmationPopup({ data, file, category, onClose, onSave, activeYear }
 
                     <div className="form-group">
                       <label>耗用量</label>
-                      <input type="number" step="any" value={usage} onChange={(e) => setUsage(e.target.value)} />
+                      <input type="number" min="0" step="1" value={usage} onChange={(e) => setUsage(e.target.value)} onKeyDown={(e) => { if(['.','e','E','-','+'].includes(e.key)) e.preventDefault(); }} />
                       {usageError && <div className="field-error-msg" style={{ color: 'var(--color-error)', fontSize: '0.75rem' }}>{usageError}</div>}
                     </div>
 

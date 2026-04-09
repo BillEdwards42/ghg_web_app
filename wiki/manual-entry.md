@@ -11,7 +11,6 @@ This system is implemented in [[pwa_front/src/components/ManualEntryPopup.jsx]] 
 - **Field Dependency**: Many fields (especially in Category 2) have a `dependency: 'useDate'`. When the date is selected, a `useEffect` in `ManualEntryPopup` triggers a fetch for relevant emission factors or equipment available on that specific date.
 
 ### Technical & Hidden Fields
-For system compatibility and backend requirements, several technical fields are managed implicitly:
 - **`source` & `custodian`**: These are defined as `type: 'hidden'` in the configuration. They are not visible to the user but are included in the `FormData` payload as empty strings or system-defined values.
 - **`file`**: This field is also `type: 'hidden'` during manual entry. It does not provide a file picker in the manual popup. Manual entries are currently designed for data-only recording; file attachments are handled automatically by the [[ocr-scan]] workflow, where the scanned image is attached to the resulting record.
 
@@ -26,8 +25,8 @@ Category 3 is fully implemented with specialized logic for different transportat
   - **State Isolation**: To prevent payload pollution (which previously crashed the backend ORM due to passing mismatched temporal keys like `useYear` across generic schemas), parameters like `useYear` are completely omitted from the blanket `defFormatSave` initialization.
   - **Overrides**: Categories requiring complex data types (like `EMPLOYEE_COMMUTING`) define their own `saveFormatting` schema override to inject specific required payload fields manually without disrupting other endpoints.
 - **Numeric Defaults**: 
-  - **General Categories (1, 2, 4, 5)**: Numeric fields (`inputNumber`) are initialized as empty strings. They are mandatory; however, any invalid or cleared input defaults to `0` upon interaction in the state.
-  - **Employee Commuting**: This is the only category where numeric fields (`员工人次`, `距离`) are explicitly initialized with a default value of `0` in the grid UI upon loading.
+  - **General Categories (1, 2, 4, 5)**: Numeric fields (`inputNumber`) are initialized as empty strings. They are mandatory. Following a bug fix to prevent browser-level 'octal' evaluation issues caused by leading prefixed zeros, these inputs actively retain exact decimal strings (`"1."`) and cleanly accept empty inputs (`""`) during active typing instead of falling back to `0`.
+  - **Employee Commuting**: This is the only category where numeric fields (`員工人次`, `距離`) are explicitly initialized with a default value of `0` in the grid UI upon loading.
 - **Date Selection**: 
   - The `date` field type uses the browser's native `<input type="date">`. 
   - **Mobile Behavior**: On Android and iOS, this automatically triggers the **system calendar** on the first tap, providing a platform-native and familiar user experience.
